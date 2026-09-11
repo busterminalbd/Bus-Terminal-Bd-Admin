@@ -24,6 +24,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.ReceiptLong
+import androidx.compose.material.icons.filled.Assignment
 import androidx.compose.material.icons.filled.Calculate
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.Receipt
@@ -75,6 +76,7 @@ fun ToolsHubScreen(
     onOpenUpdateDialog: (UpdateInfo) -> Unit = {},
     onSelectFoodBillTool: () -> Unit,
     onSelectAdvanceSalaryTool: () -> Unit = {},
+    onSelectMedicalWorkTool: () -> Unit = {},
     onSelectAppSettings: () -> Unit = {},
     onSelectUpcomingTool: (title: String) -> Unit,
     modifier: Modifier = Modifier
@@ -99,6 +101,15 @@ fun ToolsHubScreen(
             isAvailable = true,
             badgeText = if (isEn) "Active" else "চালু আছে",
             accentColor = MaterialTheme.colorScheme.secondary
+        ),
+        AppToolItem(
+            id = "medical_work",
+            title = if (isEn) "Medical Work Report" else "মেডিকেল ওয়ার্ক রিপোর্ট",
+            subtitle = if (isEn) "Daily patient ID, code & name entry, table report generation, print & share" else "আইডি, কোড ও নাম এন্ট্রি, ডেইলি রিপোর্ট টেবিল তৈরি, প্রিন্ট ও ইমেজ শেয়ার",
+            icon = Icons.Default.Assignment,
+            isAvailable = true,
+            badgeText = if (isEn) "Active" else "চালু আছে",
+            accentColor = Color(0xFF0D47A1)
         )
     )
 
@@ -264,6 +275,7 @@ fun ToolsHubScreen(
                     when (tool.id) {
                         "food_bill" -> onSelectFoodBillTool()
                         "advance_salary" -> onSelectAdvanceSalaryTool()
+                        "medical_work" -> onSelectMedicalWorkTool()
                         "app_settings" -> onSelectAppSettings()
                         else -> onSelectUpcomingTool(tool.title)
                     }

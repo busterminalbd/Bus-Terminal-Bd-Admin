@@ -11,6 +11,8 @@ import androidx.core.content.FileProvider
 import com.example.data.AdvanceSalaryEntity
 import com.example.data.AppDatabase
 import com.example.data.FoodBillEntity
+import com.example.data.MedicalRecordEntity
+import com.example.data.PresetMedicalCodeEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -25,6 +27,7 @@ data class ImportResult(
     val success: Boolean,
     val foodBillsCount: Int = 0,
     val advanceSalariesCount: Int = 0,
+    val medicalRecordsCount: Int = 0,
     val presetsRestored: Boolean = false,
     val message: String = ""
 )
@@ -99,7 +102,35 @@ object AppBackupManager {
         }
         root.put("advanceSalaries", salariesArray)
 
-        // 3. Export Presets & Headers
+        // 3. Export Medical Records & Preset Codes
+        val medicalDao = db.medicalDao()
+        val allMedicalRecords = medicalDao.getAllRecordsList()
+        val medicalArray = JSONArray()
+        for (med in allMedicalRecords) {
+            val medObj = JSONObject()
+            medObj.put("id", med.id)
+            medObj.put("date", med.date)
+            medObj.put("patientId", med.patientId)
+            medObj.put("code", med.code)
+            medObj.put("patientName", med.patientName)
+            medObj.put("notes", med.notes)
+            medObj.put("timestamp", med.timestamp)
+            medicalArray.put(medObj)
+        }
+        root.put("medicalRecords", medicalArray)
+
+        val presetCodes = medicalDao.getAllPresetCodesList()
+        val presetCodesArray = JSONArray()
+        for (pc in presetCodes) {
+            val pcObj = JSONObject()
+            pcObj.put("code", pc.code)
+            pcObj.put("name", pc.name)
+            pcObj.put("category", pc.category)
+            presetCodesArray.put(pcObj)
+        }
+        root.put("presetMedicalCodes", presetCodesArray)
+
+        // 4. Export Presets & Headers
         val foodPrefs = context.getSharedPreferences("food_bill_prefs", Context.MODE_PRIVATE)
         val salaryPrefs = context.getSharedPreferences("advance_salary_prefs", Context.MODE_PRIVATE)
 
@@ -251,7 +282,66 @@ object AppBackupManager {
                 }
             }
 
-            // 3. Restore Presets
+            // 3. Restore Medical Records & Preset Codes
+            var restoredMedicalCount = 0
+            if (root.has("medicalRecords")) {
+                val medicalArray = root.getJSONArray("medicalRecords")
+                val medicalDao = db.medicalDao()
+                val existing = medicalDao.getAllRecordsList()
+                val toInsert = mutableListOf<MedicalRecordEntity>()
+                for (i in 0 until medicalArray.length()) {
+                    val obj = medicalArray.getJSONObject(i)
+                    val date = obj.optString("date", "")
+                    val pId = obj.optString("patientId", "")
+                    val code = obj.optString("code", "")
+                    val name = obj.optString("patientName", "")
+                    val notes = obj.optString("notes", "")
+                    val timestamp = obj.optLong("timestamp", System.currentTimeMillis())
+
+                    val exists = existing.any { it.date == date && it.patientId == pId && it.code == code }
+                    if (!exists) {
+                        toInsert.add(
+                            MedicalRecordEntity(
+                                id = 0L,
+                                date = date,
+                                patientId = pId,
+                                code = code,
+                                patientName = name,
+                                notes = notes,
+                                timestamp = timestamp
+                            )
+                        )
+                    }
+                }
+                if (toInsert.isNotEmpty()) {
+                    medicalDao.insertRecords(toInsert)
+                    restoredMedicalCount = toInsert.size
+                }
+            }
+
+            if (root.has("presetMedicalCodes")) {
+                val array = root.getJSONArray("presetMedicalCodes")
+                val medicalDao = db.medicalDao()
+                val list = mutableListOf<PresetMedicalCodeEntity>()
+                for (i in 0 until array.length()) {
+                    val obj = array.getJSONObject(i)
+                    val c = obj.optString("code", "")
+                    if (c.isNotBlank()) {
+                        list.add(
+                            PresetMedicalCodeEntity(
+                                code = c,
+                                name = obj.optString("name", ""),
+                                category = obj.optString("category", "General")
+                            )
+                        )
+                    }
+                }
+                if (list.isNotEmpty()) {
+                    medicalDao.insertPresetCodes(list)
+                }
+            }
+
+            // 4. Restore Presets
             var presetsRestored = false
             val foodPrefs = context.getSharedPreferences("food_bill_prefs", Context.MODE_PRIVATE)
             val salaryPrefs = context.getSharedPreferences("advance_salary_prefs", Context.MODE_PRIVATE)
@@ -325,6 +415,7 @@ object AppBackupManager {
                 append("ডাটা সফলভাবে ইমপোর্ট হয়েছে! ")
                 if (restoredBillsCount > 0) append("$restoredBillsCount টি মেমো, ")
                 if (restoredSalariesCount > 0) append("$restoredSalariesCount টি স্যালারি রেকর্ড, ")
+                if (restoredMedicalCount > 0) append("$restoredMedicalCount টি মেডিকেল রেকর্ড, ")
                 if (presetsRestored) append("প্রিসেট ও সেটিংস ")
                 append("স্ব-স্ব স্থানে যুক্ত হয়েছে।")
             }
@@ -333,6 +424,7 @@ object AppBackupManager {
                 success = true,
                 foodBillsCount = restoredBillsCount,
                 advanceSalariesCount = restoredSalariesCount,
+                medicalRecordsCount = restoredMedicalCount,
                 presetsRestored = presetsRestored,
                 message = msg
             )

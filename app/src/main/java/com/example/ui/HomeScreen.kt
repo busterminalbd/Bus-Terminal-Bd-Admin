@@ -264,6 +264,13 @@ fun HomeScreen(
                     onNavigateBack = { selectedTool = null },
                     onOpenGlobalSettings = { showGlobalSettings = true }
                 )
+            } else if (selectedTool == "medical_work") {
+                val medicalViewModel: MedicalWorkViewModel = viewModel()
+                MedicalWorkScreen(
+                    viewModel = medicalViewModel,
+                    onNavigateBack = { selectedTool = null },
+                    onOpenGlobalSettings = { showGlobalSettings = true }
+                )
             } else {
             Scaffold(
                 topBar = {
@@ -809,6 +816,7 @@ fun HomeScreen(
                             onOpenUpdateDialog = { info -> updateDialogInfoToShow = info },
                             onSelectFoodBillTool = { selectedTool = "food_bill" },
                             onSelectAdvanceSalaryTool = { selectedTool = "advance_salary" },
+                            onSelectMedicalWorkTool = { selectedTool = "medical_work" },
                             onSelectAppSettings = { showGlobalSettings = true },
                             onSelectUpcomingTool = { title ->
                                 coroutineScope.launch {

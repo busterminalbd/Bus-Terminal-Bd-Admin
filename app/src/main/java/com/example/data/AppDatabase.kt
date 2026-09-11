@@ -10,14 +10,19 @@ import androidx.room.migration.Migration
 @Database(
     entities = [
         FoodBillEntity::class,
-        AdvanceSalaryEntity::class
+        AdvanceSalaryEntity::class,
+        MedicalRecordEntity::class,
+        CodeGroupEntity::class,
+        CodeGroupItemEntity::class,
+        PresetMedicalCodeEntity::class
     ],
-    version = 7,
+    version = 8,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun foodBillDao(): FoodBillDao
     abstract fun advanceSalaryDao(): AdvanceSalaryDao
+    abstract fun medicalDao(): MedicalDao
 
     companion object {
         @Volatile
@@ -101,6 +106,44 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // Re-adds the Medical tables for Medical Work Report tool
+        private val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `medical_records` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `date` TEXT NOT NULL,
+                        `patientId` TEXT NOT NULL,
+                        `code` TEXT NOT NULL,
+                        `patientName` TEXT NOT NULL DEFAULT '',
+                        `timestamp` INTEGER NOT NULL DEFAULT 0,
+                        `notes` TEXT NOT NULL DEFAULT ''
+                    )
+                """.trimIndent())
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `code_groups` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `groupName` TEXT NOT NULL,
+                        `description` TEXT NOT NULL DEFAULT ''
+                    )
+                """.trimIndent())
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `code_group_items` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `groupId` INTEGER NOT NULL,
+                        `code` TEXT NOT NULL
+                    )
+                """.trimIndent())
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `preset_medical_codes` (
+                        `code` TEXT PRIMARY KEY NOT NULL,
+                        `name` TEXT NOT NULL DEFAULT '',
+                        `category` TEXT NOT NULL DEFAULT 'General'
+                    )
+                """.trimIndent())
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -108,7 +151,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "albaraka_food_bill_db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_4, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_4, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
                     // Safety net only: if some other unexpected version gap is hit,
                     // fall back to a clean database rather than crashing on launch.
                     .fallbackToDestructiveMigration()
