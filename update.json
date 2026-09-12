@@ -1,7 +1,7 @@
 {
-  "versionCode": 224,
-  "versionName": "1.0.224",
-  "downloadUrl": "https://github.com/nahid6714/tools/releases/download/v1.0.224/app-release.apk",
-  "releaseNotes": "• feat: improve preset medical code handling during import\n• পারফরম্যান্স ও স্থায়িত্ব বৃদ্ধি করা হয়েছে।",
+  "versionCode": 225,
+  "versionName": "1.0.225",
+  "downloadUrl": "https://github.com/nahid6714/tools/releases/download/v1.0.225/app-release.apk",
+  "releaseNotes": "• feat: add support for JSON parsing in medical codes\n• পারফরম্যান্স ও স্থায়িত্ব বৃদ্ধি করা হয়েছে।",
   "minSupportedVersion": 1
 }
