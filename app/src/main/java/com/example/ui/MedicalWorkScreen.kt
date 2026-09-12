@@ -558,39 +558,6 @@ fun MedicalWorkScreen(
                                                 )
                                             }
                                         }
-
-                                        Spacer(modifier = Modifier.height(6.dp))
-
-                                        // Quick Paste from Clipboard Row
-                                        Row(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .clip(RoundedCornerShape(4.dp))
-                                                .clickable {
-                                                    val clip = clipboardManager.getText()?.text?.trim() ?: ""
-                                                    if (clip.isNotBlank()) {
-                                                        viewModel.addMultiplePresetCodes(clip)
-                                                        val firstToken = clip.split(Regex("[,;\\s]+")).firstOrNull()?.uppercase() ?: clip.uppercase()
-                                                        inputCode = firstToken
-                                                    }
-                                                }
-                                                .padding(vertical = 4.dp, horizontal = 2.dp),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Icon(
-                                                Icons.Default.ContentPaste,
-                                                contentDescription = null,
-                                                tint = MaterialTheme.colorScheme.primary,
-                                                modifier = Modifier.size(14.dp)
-                                            )
-                                            Spacer(modifier = Modifier.width(4.dp))
-                                            Text(
-                                                "📋 ক্লিপবোর্ড থেকে পেস্ট ও কোড যোগ",
-                                                fontSize = 11.sp,
-                                                fontWeight = FontWeight.SemiBold,
-                                                color = MaterialTheme.colorScheme.primary
-                                            )
-                                        }
                                     }
 
                                     Divider()
@@ -683,6 +650,7 @@ fun MedicalWorkScreen(
                                     val codeCount = inputCode.split(Regex("[,;\\n\\r]+")).count { it.isNotBlank() }.coerceAtLeast(1)
                                     viewModel.addRecord(targetId, inputCode, inputPatientName)
                                     inputPatientId = viewModel.getNextIdAfter(targetId, codeCount)
+                                    inputCode = ""
                                     inputPatientName = ""
                                     focusManager.clearFocus()
                                 }
@@ -765,17 +733,6 @@ fun MedicalWorkScreen(
                         Icon(Icons.Default.BarChart, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("কোড পরিসংখ্যান", fontSize = 12.sp)
-                    }
-
-                    OutlinedButton(
-                        onClick = { showCodeManagerDialog = true },
-                        shape = RoundedCornerShape(8.dp),
-                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
-                        modifier = Modifier.testTag("btn_manage_codes")
-                    ) {
-                        Icon(Icons.Default.Style, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("কোডসমূহ", fontSize = 12.sp)
                     }
                 }
             }
@@ -1062,7 +1019,7 @@ fun MedicalWorkScreen(
     if (showAutoSequenceDialog) {
         var startIdInput by remember { mutableStateOf(nextSuggestedId) }
         var countInput by remember { mutableStateOf("10") }
-        var defaultCodeInput by remember { mutableStateOf(inputCode.ifBlank { "AF07" }) }
+        var defaultCodeInput by remember { mutableStateOf(inputCode) }
 
         AlertDialog(
             onDismissRequest = { showAutoSequenceDialog = false },
