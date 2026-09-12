@@ -887,7 +887,7 @@ class MedicalWorkViewModel(application: Application) : AndroidViewModel(applicat
 
                 // Also split compound codes (e.g. "AF07, MD-01", "CBC/USG")
                 val subTokens = cleanCode.split(Regex("[,;\\n\\r/]+"))
-                    .map { it.replace(Regex("""[()[\]{}]"""), " ").trim() }
+                    .map { it.replace(Regex("""[()\[\]{}]"""), " ").trim() }
                     .flatMap { it.split(Regex("\\s+")) }
                     .map { it.trim().uppercase(Locale.ROOT) }
                     .filter { isValidPresetCode(it) && it != "DUE" }
