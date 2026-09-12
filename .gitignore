@@ -1,63 +1,18 @@
-# ================================
-# Gradle — এগুলো IGNORE করতে হবে
-# ================================
-.gradle/
-**/.gradle/
-
-# ================================
-# Build Output — এগুলো IGNORE করতে হবে
-# ================================
-build/
-**/build/
-out/
-.build-outputs/
-
-# ================================
-# Android Studio — এগুলো IGNORE করতে হবে
-# ================================
-.idea/
 *.iml
-
-# ================================
-# Local Machine Configuration — IGNORE করতে হবে
-# ================================
+.gradle
+.kotlin
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
 local.properties
-
-# ================================
-# Generated Gradle State/Cache — এগুলো IGNORE করতে হবে
-# ================================
-**/executionHistory/
-**/fileHashes/
-**/buildOutputCleanup/
-**/configuration-cache/
-**/caches/
-**/daemon/
-**/native/
-**/notifications/
-**/workers/
-
-# ================================
-# Generated Gradle Cache Files — এগুলো IGNORE করতে হবে
-# ================================
-**/*.work.bin
-**/buildfingerprint.bin
-**/classloaderscopes.bin
-**/projectfingerprint.bin
-**/resourceHashesCache.bin
-**/fileHashes.bin
-**/executionHistory.bin
-**/outputFiles.bin
-**/candidates.bin
-**/gc.properties
-
-# ================================
-# Keystores
-# ================================
+.env
 debug.keystore
-debug.keystore.base64
-
-# ================================
-# IMPORTANT
-# app_logo_foreground.jpg — IGNORE করবে না
-# ================================
-!**/app_logo_foreground.jpg

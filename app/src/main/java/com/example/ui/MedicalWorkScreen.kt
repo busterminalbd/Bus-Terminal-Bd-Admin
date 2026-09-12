@@ -2,7 +2,6 @@ package com.example.ui
 
 import android.app.DatePickerDialog
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -16,9 +15,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
@@ -30,8 +31,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.ContentPaste
@@ -56,8 +59,6 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.InputChip
-import androidx.compose.material3.InputChipDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -125,6 +126,8 @@ fun MedicalWorkScreen(
     var inputPatientId by remember { mutableStateOf("") }
     var inputCode by remember { mutableStateOf("") }
     var inputPatientName by remember { mutableStateOf("") }
+    var isCodeDropdownExpanded by remember { mutableStateOf(false) }
+    var quickCodeInputText by remember { mutableStateOf("") }
 
     // Synchronize auto-suggested ID when user hasn't typed anything
     LaunchedEffect(nextSuggestedId, records.size) {
@@ -285,6 +288,13 @@ fun MedicalWorkScreen(
                                     MedicalPrintUtils.copyTableAsText(context, selectedDate, records)
                                 }
                             )
+                            DropdownMenuItem(
+                                text = { Text("{ } JSON কপি করুন") },
+                                onClick = {
+                                    showTopMenu = false
+                                    MedicalPrintUtils.copyTableAsJson(context, selectedDate, records)
+                                }
+                            )
                             Divider()
                             DropdownMenuItem(
                                 text = { Text("📅 আজকের তারিখে যান") },
@@ -367,7 +377,7 @@ fun MedicalWorkScreen(
                                 text = "নতুন এন্ট্রি ফর্ম",
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 14.sp,
-                                color = DarkForestGreen
+                                color = MaterialTheme.colorScheme.primary
                             )
                             Text(
                                 text = "তারিখ: ${MedicalPrintUtils.formatDateShort(selectedDate)}",
@@ -415,7 +425,7 @@ fun MedicalWorkScreen(
                                             Icon(
                                                 Icons.Default.ContentPaste,
                                                 contentDescription = "ক্লিপবোর্ড থেকে আইডি পেস্ট",
-                                                tint = DarkForestGreen,
+                                                tint = MaterialTheme.colorScheme.primary,
                                                 modifier = Modifier.size(16.dp)
                                             )
                                         }
@@ -426,47 +436,237 @@ fun MedicalWorkScreen(
                                     .testTag("input_patient_id")
                             )
 
-                            OutlinedTextField(
-                                value = inputCode,
-                                onValueChange = { inputCode = it.uppercase() },
-                                label = { Text("কোড") },
-                                placeholder = { Text("যেমন AF07") },
-                                singleLine = true,
-                                keyboardOptions = KeyboardOptions(
-                                    capitalization = KeyboardCapitalization.Characters,
-                                    imeAction = ImeAction.Next
-                                ),
-                                keyboardActions = KeyboardActions(
-                                    onNext = { focusManager.moveFocus(FocusDirection.Down) }
-                                ),
-                                trailingIcon = {
-                                    if (inputCode.isNotBlank()) {
-                                        IconButton(onClick = { inputCode = "" }, modifier = Modifier.size(24.dp)) {
-                                            Icon(Icons.Default.Clear, contentDescription = "মুছুন", modifier = Modifier.size(16.dp))
-                                        }
-                                    } else {
-                                        IconButton(
-                                            onClick = {
-                                                val clip = clipboardManager.getText()?.text?.trim() ?: ""
-                                                if (clip.isNotBlank()) {
-                                                    inputCode = clip.uppercase()
+                            Box(modifier = Modifier.weight(1f)) {
+                                OutlinedTextField(
+                                    value = inputCode,
+                                    onValueChange = { inputCode = it.uppercase() },
+                                    label = { Text("কোড") },
+                                    placeholder = { Text("যেমন AF07") },
+                                    singleLine = true,
+                                    keyboardOptions = KeyboardOptions(
+                                        capitalization = KeyboardCapitalization.Characters,
+                                        imeAction = ImeAction.Next
+                                    ),
+                                    keyboardActions = KeyboardActions(
+                                        onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                                    ),
+                                    trailingIcon = {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            modifier = Modifier.padding(end = 2.dp)
+                                        ) {
+                                            if (inputCode.isNotBlank()) {
+                                                IconButton(onClick = { inputCode = "" }, modifier = Modifier.size(24.dp)) {
+                                                    Icon(Icons.Default.Clear, contentDescription = "মুছুন", modifier = Modifier.size(16.dp))
                                                 }
-                                            },
-                                            modifier = Modifier.size(24.dp)
+                                            }
+                                            IconButton(
+                                                onClick = { isCodeDropdownExpanded = !isCodeDropdownExpanded },
+                                                modifier = Modifier
+                                                    .size(28.dp)
+                                                    .testTag("btn_toggle_code_dropdown")
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.ArrowDropDown,
+                                                    contentDescription = "কোড তালিকা",
+                                                    tint = MaterialTheme.colorScheme.primary
+                                                )
+                                            }
+                                        }
+                                    },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .testTag("input_code")
+                                 )
+
+                                DropdownMenu(
+                                    expanded = isCodeDropdownExpanded,
+                                    onDismissRequest = { isCodeDropdownExpanded = false },
+                                    modifier = Modifier
+                                        .widthIn(min = 250.dp, max = 320.dp)
+                                        .heightIn(max = 400.dp)
+                                ) {
+                                    // Dropdown Menu Header: Quick Add Code with "+" Button
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 10.dp, vertical = 6.dp)
+                                    ) {
+                                        Text(
+                                            text = "কোড নির্বাচন ও নতুন কোড যোগ",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                        Spacer(modifier = Modifier.height(6.dp))
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            OutlinedTextField(
+                                                value = quickCodeInputText,
+                                                onValueChange = { quickCodeInputText = it.uppercase() },
+                                                placeholder = { Text("নতুন কোড...", fontSize = 12.sp) },
+                                                singleLine = true,
+                                                modifier = Modifier
+                                                    .weight(1f)
+                                                    .height(48.dp),
+                                                keyboardOptions = KeyboardOptions(
+                                                    capitalization = KeyboardCapitalization.Characters,
+                                                    imeAction = ImeAction.Done
+                                                ),
+                                                keyboardActions = KeyboardActions(
+                                                    onDone = {
+                                                        val trimmed = quickCodeInputText.trim()
+                                                        if (trimmed.isNotBlank()) {
+                                                            if (trimmed.contains(",") || trimmed.contains(" ") || trimmed.contains("\n")) {
+                                                                viewModel.addMultiplePresetCodes(trimmed)
+                                                            } else {
+                                                                viewModel.addPresetCode(trimmed)
+                                                            }
+                                                            inputCode = trimmed.split(Regex("[,;\\s]+")).firstOrNull()?.uppercase() ?: trimmed.uppercase()
+                                                            quickCodeInputText = ""
+                                                        }
+                                                    }
+                                                )
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            IconButton(
+                                                onClick = {
+                                                    val trimmed = quickCodeInputText.trim()
+                                                    if (trimmed.isNotBlank()) {
+                                                        if (trimmed.contains(",") || trimmed.contains(" ") || trimmed.contains("\n")) {
+                                                            viewModel.addMultiplePresetCodes(trimmed)
+                                                        } else {
+                                                            viewModel.addPresetCode(trimmed)
+                                                        }
+                                                        inputCode = trimmed.split(Regex("[,;\\s]+")).firstOrNull()?.uppercase() ?: trimmed.uppercase()
+                                                        quickCodeInputText = ""
+                                                    }
+                                                },
+                                                modifier = Modifier
+                                                    .size(42.dp)
+                                                    .clip(RoundedCornerShape(8.dp))
+                                                    .background(MaterialTheme.colorScheme.primary)
+                                                    .testTag("dropdown_add_code_plus_btn")
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Add,
+                                                    contentDescription = "কোড যোগ করুন",
+                                                    tint = MaterialTheme.colorScheme.onPrimary,
+                                                    modifier = Modifier.size(20.dp)
+                                                )
+                                            }
+                                        }
+
+                                        Spacer(modifier = Modifier.height(6.dp))
+
+                                        // Quick Paste from Clipboard Row
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clip(RoundedCornerShape(4.dp))
+                                                .clickable {
+                                                    val clip = clipboardManager.getText()?.text?.trim() ?: ""
+                                                    if (clip.isNotBlank()) {
+                                                        viewModel.addMultiplePresetCodes(clip)
+                                                        val firstToken = clip.split(Regex("[,;\\s]+")).firstOrNull()?.uppercase() ?: clip.uppercase()
+                                                        inputCode = firstToken
+                                                    }
+                                                }
+                                                .padding(vertical = 4.dp, horizontal = 2.dp),
+                                            verticalAlignment = Alignment.CenterVertically
                                         ) {
                                             Icon(
                                                 Icons.Default.ContentPaste,
-                                                contentDescription = "ক্লিপবোর্ড থেকে কোড পেস্ট",
-                                                tint = DarkForestGreen,
-                                                modifier = Modifier.size(16.dp)
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(14.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(
+                                                "📋 ক্লিপবোর্ড থেকে পেস্ট ও কোড যোগ",
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = MaterialTheme.colorScheme.primary
                                             )
                                         }
                                     }
-                                },
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .testTag("input_code")
-                            )
+
+                                    Divider()
+
+                                    // List of preset codes
+                                    if (presetCodes.isEmpty()) {
+                                        DropdownMenuItem(
+                                            text = {
+                                                Text(
+                                                    "কোনো কোড নেই। উপরে লিখে + চাপুন।",
+                                                    fontSize = 12.sp,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            },
+                                            onClick = { }
+                                        )
+                                    } else {
+                                        presetCodes.forEach { preset ->
+                                            val isSelected = inputCode.equals(preset.code, ignoreCase = true)
+                                            DropdownMenuItem(
+                                                text = {
+                                                    Row(
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                                        verticalAlignment = Alignment.CenterVertically
+                                                    ) {
+                                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                                            if (isSelected) {
+                                                                Icon(
+                                                                    Icons.Default.Check,
+                                                                    contentDescription = "নির্বাচিত",
+                                                                    tint = MaterialTheme.colorScheme.primary,
+                                                                    modifier = Modifier.size(16.dp)
+                                                                )
+                                                                Spacer(modifier = Modifier.width(6.dp))
+                                                            }
+                                                            Text(
+                                                                text = preset.code,
+                                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                                                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                                                                fontSize = 14.sp
+                                                            )
+                                                        }
+                                                        if (!preset.name.isNullOrBlank()) {
+                                                            Text(
+                                                                text = preset.name,
+                                                                fontSize = 11.sp,
+                                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                            )
+                                                        }
+                                                    }
+                                                },
+                                                onClick = {
+                                                    inputCode = preset.code
+                                                    isCodeDropdownExpanded = false
+                                                },
+                                                trailingIcon = {
+                                                    IconButton(
+                                                        onClick = {
+                                                            viewModel.deletePresetCode(preset.code)
+                                                        },
+                                                        modifier = Modifier.size(24.dp)
+                                                    ) {
+                                                        Icon(
+                                                            Icons.Default.Delete,
+                                                            contentDescription = "মুছুন",
+                                                            tint = MaterialTheme.colorScheme.error.copy(alpha = 0.6f),
+                                                            modifier = Modifier.size(14.dp)
+                                                        )
+                                                    }
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
+                            }
                         }
 
                         Spacer(modifier = Modifier.height(8.dp))
@@ -477,6 +677,17 @@ fun MedicalWorkScreen(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
+                            val onAddRecord = {
+                                if (inputPatientId.isNotBlank() || inputCode.isNotBlank()) {
+                                    val targetId = inputPatientId.ifBlank { nextSuggestedId }
+                                    val codeCount = inputCode.split(Regex("[,;\\n\\r]+")).count { it.isNotBlank() }.coerceAtLeast(1)
+                                    viewModel.addRecord(targetId, inputCode, inputPatientName)
+                                    inputPatientId = viewModel.getNextIdAfter(targetId, codeCount)
+                                    inputPatientName = ""
+                                    focusManager.clearFocus()
+                                }
+                            }
+
                             OutlinedTextField(
                                 value = inputPatientName,
                                 onValueChange = { inputPatientName = it.uppercase() },
@@ -488,13 +699,7 @@ fun MedicalWorkScreen(
                                     imeAction = ImeAction.Done
                                 ),
                                 keyboardActions = KeyboardActions(
-                                    onDone = {
-                                        if (inputPatientId.isNotBlank() || inputCode.isNotBlank()) {
-                                            viewModel.addRecord(inputPatientId, inputCode, inputPatientName)
-                                            inputPatientName = ""
-                                            focusManager.clearFocus()
-                                        }
-                                    }
+                                    onDone = { onAddRecord() }
                                 ),
                                 modifier = Modifier
                                     .weight(1f)
@@ -502,14 +707,11 @@ fun MedicalWorkScreen(
                             )
 
                             Button(
-                                onClick = {
-                                    if (inputPatientId.isNotBlank() || inputCode.isNotBlank()) {
-                                        viewModel.addRecord(inputPatientId, inputCode, inputPatientName)
-                                        inputPatientName = ""
-                                        focusManager.clearFocus()
-                                    }
-                                },
-                                colors = ButtonDefaults.buttonColors(containerColor = DarkForestGreen),
+                                onClick = { onAddRecord() },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary,
+                                    contentColor = MaterialTheme.colorScheme.onPrimary
+                                ),
                                 shape = RoundedCornerShape(10.dp),
                                 modifier = Modifier
                                     .height(54.dp)
@@ -518,57 +720,6 @@ fun MedicalWorkScreen(
                                 Icon(Icons.Default.Add, contentDescription = "যোগ করুন")
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text("যোগ করুন", fontWeight = FontWeight.Bold)
-                            }
-                        }
-
-                        // Preset Code Chips (1-tap to select or paste any code)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(end = 4.dp)
-                            ) {
-                                Icon(Icons.Default.Style, contentDescription = null, tint = DarkForestGreen, modifier = Modifier.size(14.dp))
-                                Spacer(modifier = Modifier.width(2.dp))
-                                Text("কুইক কোড:", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-
-                            // Quick Code Paste / Add Chip
-                            Surface(
-                                onClick = { showQuickCodePasteDialog = true },
-                                shape = RoundedCornerShape(16.dp),
-                                color = DarkForestGreen.copy(alpha = 0.12f),
-                                border = BorderStroke(1.dp, DarkForestGreen.copy(alpha = 0.4f)),
-                                modifier = Modifier.height(30.dp)
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.padding(horizontal = 8.dp)
-                                ) {
-                                    Icon(Icons.Default.Add, contentDescription = "কোড পেস্ট বা যোগ", tint = DarkForestGreen, modifier = Modifier.size(14.dp))
-                                    Spacer(modifier = Modifier.width(3.dp))
-                                    Text("+ কোড পেস্ট", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = DarkForestGreen)
-                                }
-                            }
-
-                            presetCodes.forEach { preset ->
-                                val isSelected = inputCode == preset.code
-                                InputChip(
-                                    selected = isSelected,
-                                    onClick = { inputCode = preset.code },
-                                    label = { Text(preset.code, fontSize = 11.sp, fontWeight = FontWeight.Bold) },
-                                    colors = InputChipDefaults.inputChipColors(
-                                        selectedContainerColor = DarkForestGreen,
-                                        selectedLabelColor = Color.White
-                                    ),
-                                    modifier = Modifier.height(30.dp)
-                                )
                             }
                         }
                     }
@@ -646,7 +797,7 @@ fun MedicalWorkScreen(
                         text = "মোট: ${BengaliUtils.toBengaliDigits(records.size.toString())} টি এন্ট্রি",
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 13.sp,
-                        color = DarkForestGreen
+                        color = MaterialTheme.colorScheme.primary
                     )
                 }
             }
@@ -688,12 +839,12 @@ fun MedicalWorkScreen(
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp, bottomStart = 0.dp, bottomEnd = 0.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFFE8ECE9))
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
                     ) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .border(1.dp, Color.Black.copy(alpha = 0.3f))
+                                .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
                                 .padding(vertical = 8.dp, horizontal = 4.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -702,38 +853,43 @@ fun MedicalWorkScreen(
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 13.sp,
                                 textAlign = TextAlign.Center,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.width(48.dp)
                             )
-                            Divider(modifier = Modifier.height(20.dp).width(1.dp), color = Color.Black.copy(alpha = 0.3f))
+                            Divider(modifier = Modifier.height(20.dp).width(1.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
                             Text(
                                 text = "ID",
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 13.sp,
                                 textAlign = TextAlign.Center,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.weight(1.1f)
                             )
-                            Divider(modifier = Modifier.height(20.dp).width(1.dp), color = Color.Black.copy(alpha = 0.3f))
+                            Divider(modifier = Modifier.height(20.dp).width(1.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
                             Text(
                                 text = "কোড",
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 13.sp,
                                 textAlign = TextAlign.Center,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.weight(1f)
                             )
-                            Divider(modifier = Modifier.height(20.dp).width(1.dp), color = Color.Black.copy(alpha = 0.3f))
+                            Divider(modifier = Modifier.height(20.dp).width(1.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
                             Text(
                                 text = "নাম",
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 13.sp,
                                 textAlign = TextAlign.Center,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.weight(1.3f)
                             )
-                            Divider(modifier = Modifier.height(20.dp).width(1.dp), color = Color.Black.copy(alpha = 0.3f))
+                            Divider(modifier = Modifier.height(20.dp).width(1.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
                             Text(
                                 text = "অ্যাকশন",
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 11.sp,
                                 textAlign = TextAlign.Center,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.width(60.dp)
                             )
                         }
@@ -749,13 +905,13 @@ fun MedicalWorkScreen(
                             .clickable { editingRecord = record },
                         shape = RoundedCornerShape(0.dp),
                         colors = CardDefaults.cardColors(
-                            containerColor = if (isEven) Color.White else Color(0xFFF9FAF9)
+                            containerColor = if (isEven) MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
                         )
                     ) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .border(0.5.dp, Color.Black.copy(alpha = 0.2f))
+                                .border(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f))
                                 .padding(vertical = 8.dp, horizontal = 4.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -765,9 +921,10 @@ fun MedicalWorkScreen(
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 13.sp,
                                 textAlign = TextAlign.Center,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.width(48.dp)
                             )
-                            Divider(modifier = Modifier.height(24.dp).width(0.5.dp), color = Color.Black.copy(alpha = 0.2f))
+                            Divider(modifier = Modifier.height(24.dp).width(0.5.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f))
 
                             // 2. ID
                             Text(
@@ -775,20 +932,21 @@ fun MedicalWorkScreen(
                                 fontWeight = FontWeight.SemiBold,
                                 fontSize = 13.sp,
                                 textAlign = TextAlign.Center,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 modifier = Modifier.weight(1.1f)
                             )
-                            Divider(modifier = Modifier.height(24.dp).width(0.5.dp), color = Color.Black.copy(alpha = 0.2f))
+                            Divider(modifier = Modifier.height(24.dp).width(0.5.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f))
 
                             // 3. কোড
                             Text(
                                 text = record.code.uppercase(),
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 13.sp,
-                                color = DarkForestGreen,
+                                color = MaterialTheme.colorScheme.primary,
                                 textAlign = TextAlign.Center,
                                 modifier = Modifier.weight(1f)
                             )
-                            Divider(modifier = Modifier.height(24.dp).width(0.5.dp), color = Color.Black.copy(alpha = 0.2f))
+                            Divider(modifier = Modifier.height(24.dp).width(0.5.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f))
 
                             // 4. নাম
                             Text(
@@ -797,9 +955,10 @@ fun MedicalWorkScreen(
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                                 textAlign = TextAlign.Center,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 modifier = Modifier.weight(1.3f)
                             )
-                            Divider(modifier = Modifier.height(24.dp).width(0.5.dp), color = Color.Black.copy(alpha = 0.2f))
+                            Divider(modifier = Modifier.height(24.dp).width(0.5.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f))
 
                             // 5. Actions (Edit & Delete)
                             Row(
@@ -883,7 +1042,10 @@ fun MedicalWorkScreen(
                         viewModel.updateRecord(record.id, editId, editCode, editName)
                         editingRecord = null
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = DarkForestGreen)
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
                 ) {
                     Text("সংরক্ষণ করুন")
                 }
@@ -945,7 +1107,10 @@ fun MedicalWorkScreen(
                         viewModel.generateAutoSequence(startIdInput, count, defaultCodeInput)
                         showAutoSequenceDialog = false
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = DarkForestGreen)
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
                 ) {
                     Text("তৈরি করুন")
                 }
@@ -961,12 +1126,16 @@ fun MedicalWorkScreen(
     // 3. Bulk Paste Dialog
     if (showBulkPasteDialog) {
         var rawTextInput by remember { mutableStateOf("") }
+        val isJsonDetected = remember(rawTextInput) {
+            val t = rawTextInput.trim()
+            (t.contains("{") && t.contains("}")) || (t.contains("[") && t.contains("]"))
+        }
 
         AlertDialog(
             onDismissRequest = { showBulkPasteDialog = false },
             title = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.ContentPaste, contentDescription = null, tint = DarkForestGreen, modifier = Modifier.size(20.dp))
+                    Icon(Icons.Default.ContentPaste, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("বাল্ক টেক্সট / কোড পেস্ট", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 }
@@ -974,7 +1143,7 @@ fun MedicalWorkScreen(
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        text = "যেকোনো ফরম্যাটে পেস্ট করুন:\n• শুধুমাত্র কোড (যেমন: AF07, MD-01, J007, USG, CBC)\n• আইডি ও কোড (যেমন: AB260948 AF07 TUHIN)\nস্বয়ংক্রিয়ভাবে আইডি তৈরি হবে এবং কোডগুলো কুইক কোড তালিকাতেও সেভ হয়ে যাবে।",
+                        text = "যেকোনো ফরম্যাটে পেস্ট করুন:\n• JSON কোড (যেমন: {\"date\": \"...\", \"data\": [...]})\n• শুধুমাত্র কোড (যেমন: AF07, MD-01, J007, USG, CBC)\n• আইডি ও কোড (যেমন: AB260948 AF07 TUHIN)\nস্বয়ংক্রিয়ভাবে আইডি, কোড ও নাম টেবিলে যুক্ত হবে।",
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -997,6 +1166,33 @@ fun MedicalWorkScreen(
                         Text("📋 ক্লিপবোর্ড থেকে সরাসরি পেস্ট করুন", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                     }
 
+                    if (isJsonDetected) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            shape = RoundedCornerShape(6.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Default.Check,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "JSON ডেটা সনাক্ত হয়েছে: তারিখ ও টেবিল স্বয়ংক্রিয়ভাবে লোড হবে",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+                        }
+                    }
+
                     OutlinedTextField(
                         value = rawTextInput,
                         onValueChange = { rawTextInput = it },
@@ -1015,7 +1211,10 @@ fun MedicalWorkScreen(
                             showBulkPasteDialog = false
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = DarkForestGreen)
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
                 ) {
                     Text("ইমপোর্ট করুন")
                 }
@@ -1037,7 +1236,7 @@ fun MedicalWorkScreen(
             onDismissRequest = { showQuickCodePasteDialog = false },
             title = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.ContentPaste, contentDescription = null, tint = DarkForestGreen, modifier = Modifier.size(20.dp))
+                    Icon(Icons.Default.ContentPaste, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("যেকোনো কোড পেস্ট ও যোগ করুন", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 }
@@ -1105,7 +1304,10 @@ fun MedicalWorkScreen(
                             showQuickCodePasteDialog = false
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = DarkForestGreen)
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
                 ) {
                     Text("যোগ করুন")
                 }
@@ -1143,7 +1345,7 @@ fun MedicalWorkScreen(
                     Text(
                         text = "সর্বমোট রোগী/রেকর্ড সংখ্যা: ${BengaliUtils.toBengaliDigits(records.size.toString())} টি",
                         fontWeight = FontWeight.Bold,
-                        color = DarkForestGreen,
+                        color = MaterialTheme.colorScheme.primary,
                         fontSize = 14.sp
                     )
                     Divider(modifier = Modifier.padding(vertical = 4.dp))
@@ -1166,7 +1368,7 @@ fun MedicalWorkScreen(
                                 Text(
                                     text = "${BengaliUtils.toBengaliDigits(count.toString())} টি",
                                     fontWeight = FontWeight.SemiBold,
-                                    color = DarkForestGreen,
+                                    color = MaterialTheme.colorScheme.primary,
                                     fontSize = 13.sp
                                 )
                             }
@@ -1222,7 +1424,10 @@ fun MedicalWorkScreen(
                                     newCodeName = ""
                                 }
                             },
-                            colors = ButtonDefaults.buttonColors(containerColor = DarkForestGreen)
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
+                            )
                         ) {
                             Text("যোগ")
                         }
@@ -1330,7 +1535,10 @@ private fun SurfaceBottomBar(
             // Print button
             Button(
                 onClick = onPrint,
-                colors = ButtonDefaults.buttonColors(containerColor = DarkForestGreen),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                ),
                 shape = RoundedCornerShape(8.dp),
                 modifier = Modifier
                     .weight(1.2f)

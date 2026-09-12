@@ -23,6 +23,8 @@ import android.print.PrintManager
 import android.widget.Toast
 import androidx.core.content.FileProvider
 import com.example.data.MedicalRecordEntity
+import org.json.JSONArray
+import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
 
@@ -531,6 +533,47 @@ object MedicalPrintUtils {
         val clip = ClipData.newPlainText("Medical Work Report", sb.toString())
         clipboard?.setPrimaryClip(clip)
         Toast.makeText(context, "রিপোর্ট ক্লিপবোর্ডে কপি করা হয়েছে", Toast.LENGTH_SHORT).show()
+    }
+
+    /**
+     * Copies the table data formatted as clean JSON to clipboard matching the standard JSON structure.
+     */
+    fun copyTableAsJson(
+        context: Context,
+        dateStr: String,
+        records: List<MedicalRecordEntity>
+    ) {
+        try {
+            val root = JSONObject()
+            root.put("date", formatDateShort(dateStr))
+
+            val cols = JSONArray()
+            cols.put("ক্রমিক")
+            cols.put("ID")
+            cols.put("কোড")
+            cols.put("নাম")
+            root.put("columns", cols)
+
+            val dataArr = JSONArray()
+            for (i in records.indices) {
+                val r = records[i]
+                val item = JSONObject()
+                item.put("ক্রমিক", BengaliUtils.toBengaliDigits((i + 1).toString()))
+                item.put("ID", r.patientId.uppercase())
+                item.put("কোড", r.code.uppercase())
+                item.put("নাম", r.patientName.uppercase())
+                dataArr.put(item)
+            }
+            root.put("data", dataArr)
+
+            val jsonString = root.toString(2)
+            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+            val clip = ClipData.newPlainText("Medical Work JSON", jsonString)
+            clipboard?.setPrimaryClip(clip)
+            Toast.makeText(context, "JSON ফরম্যাটে ক্লিপবোর্ডে কপি করা হয়েছে", Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            Toast.makeText(context, "JSON কপি করতে সমস্যা হয়েছে", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun shareBitmapImage(context: Context, bitmap: Bitmap, filename: String) {

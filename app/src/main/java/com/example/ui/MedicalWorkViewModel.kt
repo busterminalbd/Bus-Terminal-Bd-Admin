@@ -9,6 +9,10 @@ import com.example.data.CodeGroupItemEntity
 import com.example.data.MedicalRecordEntity
 import com.example.data.MedicalRepository
 import com.example.data.PresetMedicalCodeEntity
+import com.example.util.BengaliUtils
+import com.example.util.MedicalPrintUtils
+import org.json.JSONArray
+import org.json.JSONObject
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -103,16 +107,26 @@ class MedicalWorkViewModel(application: Application) : AndroidViewModel(applicat
         )
     }
 
-    private fun calculateNextId(lastId: String): String {
+    fun calculateNextId(lastId: String): String {
         val trimmed = lastId.trim()
+        if (trimmed.isBlank()) return "AB260901"
         val digits = trimmed.takeLastWhile { it.isDigit() }
         return if (digits.isNotEmpty()) {
             val prefix = trimmed.dropLast(digits.length)
             val nextNum = (digits.toLongOrNull() ?: 0L) + 1
             "$prefix${String.format(Locale.US, "%0${digits.length}d", nextNum)}"
         } else {
-            trimmed
+            "${trimmed}01"
         }
+    }
+
+    fun getNextIdAfter(startId: String, steps: Int = 1): String {
+        var id = startId
+        val iterations = if (steps < 1) 1 else steps
+        repeat(iterations) {
+            id = calculateNextId(id)
+        }
+        return id
     }
 
     fun setSelectedDate(date: String) {
@@ -182,9 +196,10 @@ class MedicalWorkViewModel(application: Application) : AndroidViewModel(applicat
                 _uiEvent.emit("${recordsToAdd.size} টি রেকর্ড ও কোড সফলভাবে যোগ হয়েছে!")
             } else {
                 val finalCode = codeTokens.firstOrNull() ?: c
+                val finalId = pId.ifBlank { nextSuggestedPatientId.value }
                 val record = MedicalRecordEntity(
                     date = _selectedDate.value,
-                    patientId = pId,
+                    patientId = finalId,
                     code = finalCode,
                     patientName = n,
                     notes = notes.trim()
@@ -199,7 +214,7 @@ class MedicalWorkViewModel(application: Application) : AndroidViewModel(applicat
                         )
                     )
                 }
-                _uiEvent.emit("রেকর্ড সফলভাবে যোগ হয়েছে: ${pId.ifBlank { finalCode }}")
+                _uiEvent.emit("রেকর্ড সফলভাবে যোগ হয়েছে: $finalId")
             }
         }
     }
@@ -270,6 +285,11 @@ class MedicalWorkViewModel(application: Application) : AndroidViewModel(applicat
         }
 
         viewModelScope.launch {
+            // First attempt to detect and parse JSON format
+            if (tryParseAndImportJson(trimmed)) {
+                return@launch
+            }
+
             // Determine line separator or item separator
             val rawLines = if (trimmed.contains("\n")) {
                 trimmed.split("\n").map { it.trim() }.filter { it.isNotBlank() }
@@ -367,6 +387,249 @@ class MedicalWorkViewModel(application: Application) : AndroidViewModel(applicat
                 _uiEvent.emit("কোনো বৈধ এন্ট্রি চিহ্নিত করা যায়নি")
             }
         }
+    }
+
+    private suspend fun tryParseAndImportJson(rawText: String): Boolean {
+        var jsonText = rawText.trim()
+        if (jsonText.startsWith("```")) {
+            jsonText = jsonText.replace(Regex("""^```(?:json)?\s*""", RegexOption.IGNORE_CASE), "")
+                .replace(Regex("""\s*```$"""), "")
+                .trim()
+        }
+
+        val firstBrace = jsonText.indexOf('{')
+        val firstBracket = jsonText.indexOf('[')
+        val startIdx = when {
+            firstBrace != -1 && firstBracket != -1 -> minOf(firstBrace, firstBracket)
+            firstBrace != -1 -> firstBrace
+            firstBracket != -1 -> firstBracket
+            else -> -1
+        }
+
+        val lastBrace = jsonText.lastIndexOf('}')
+        val lastBracket = jsonText.lastIndexOf(']')
+        val endIdx = maxOf(lastBrace, lastBracket)
+
+        if (startIdx == -1 || endIdx == -1 || endIdx <= startIdx) {
+            return false
+        }
+
+        val jsonSubstring = jsonText.substring(startIdx, endIdx + 1).trim()
+
+        try {
+            var targetDate = _selectedDate.value
+            var dateChanged = false
+            var dataArray: JSONArray? = null
+
+            if (jsonSubstring.startsWith("{")) {
+                val rootObj = JSONObject(jsonSubstring)
+
+                // 1. Extract Date if available
+                val dateKeys = listOf("date", "তারিখ", "Date", "DATE", "report_date", "reportDate")
+                for (key in dateKeys) {
+                    if (rootObj.has(key) && !rootObj.isNull(key)) {
+                        val parsed = parseDateToIso(rootObj.optString(key))
+                        if (parsed != null) {
+                            targetDate = parsed
+                            dateChanged = true
+                            break
+                        }
+                    }
+                }
+
+                // 2. Find data array
+                val arrayKeys = listOf("data", "records", "rows", "items", "patients", "list", "তথ্য")
+                for (key in arrayKeys) {
+                    if (rootObj.has(key) && !rootObj.isNull(key)) {
+                        dataArray = rootObj.optJSONArray(key)
+                        if (dataArray != null) break
+                    }
+                }
+            } else if (jsonSubstring.startsWith("[")) {
+                dataArray = JSONArray(jsonSubstring)
+            }
+
+            if (dataArray == null || dataArray.length() == 0) {
+                return false
+            }
+
+            val recordsToAdd = mutableListOf<MedicalRecordEntity>()
+            val presetCodesToAdd = mutableListOf<PresetMedicalCodeEntity>()
+            var currentNextId = nextSuggestedPatientId.value
+
+            // Fetch existing records for this date to update matching IDs or append
+            val existingRecords = repository.getRecordsByDateList(targetDate)
+
+            for (i in 0 until dataArray.length()) {
+                val item = dataArray.opt(i) ?: continue
+                var patientId = ""
+                var code = ""
+                var patientName = ""
+                var notes = ""
+
+                if (item is JSONObject) {
+                    // Match ID
+                    val idKeys = listOf("ID", "id", "Id", "patientId", "patient_id", "patientID", "আইডি", "আইডি নং", "আইডি নম্বর", "Patient ID")
+                    for (k in idKeys) {
+                        if (item.has(k) && !item.isNull(k)) {
+                            patientId = item.optString(k).trim()
+                            if (patientId.isNotBlank()) break
+                        }
+                    }
+
+                    // Match Code
+                    val codeKeys = listOf("কোড", "code", "Code", "CODE", "testCode", "test_code", "medical_code")
+                    for (k in codeKeys) {
+                        if (item.has(k) && !item.isNull(k)) {
+                            code = item.optString(k).trim()
+                            if (code.isNotBlank()) break
+                        }
+                    }
+
+                    // Match Name
+                    val nameKeys = listOf("নাম", "name", "Name", "patientName", "patient_name", "Patient Name", "রোগীর নাম")
+                    for (k in nameKeys) {
+                        if (item.has(k) && !item.isNull(k)) {
+                            patientName = item.optString(k).trim()
+                            if (patientName.isNotBlank()) break
+                        }
+                    }
+
+                    // Match Notes
+                    val noteKeys = listOf("notes", "note", "মন্তব্য", "remarks")
+                    for (k in noteKeys) {
+                        if (item.has(k) && !item.isNull(k)) {
+                            notes = item.optString(k).trim()
+                            if (notes.isNotBlank()) break
+                        }
+                    }
+
+                    // Fallback key search if exact keys not matched
+                    if (patientId.isBlank() || code.isBlank()) {
+                        val keys = item.keys()
+                        while (keys.hasNext()) {
+                            val k = keys.next()
+                            val kNorm = k.trim().lowercase(Locale.ROOT)
+                            val v = item.optString(k).trim()
+                            if (v.isBlank()) continue
+                            if (patientId.isBlank() && (kNorm == "id" || kNorm.contains("id") || k.contains("আইডি"))) {
+                                patientId = v
+                            } else if (code.isBlank() && (kNorm == "code" || kNorm.contains("code") || k.contains("কোড"))) {
+                                code = v
+                            } else if (patientName.isBlank() && (kNorm == "name" || kNorm.contains("name") || k.contains("নাম"))) {
+                                patientName = v
+                            }
+                        }
+                    }
+                } else if (item is JSONArray) {
+                    val list = mutableListOf<String>()
+                    for (j in 0 until item.length()) {
+                        list.add(item.optString(j).trim())
+                    }
+                    val nonSerial = list.filterIndexed { index, s ->
+                        !(index == 0 && s.matches(Regex("""^(?:\d+|[০-৯]+)$""")))
+                    }
+                    if (nonSerial.isNotEmpty()) {
+                        patientId = nonSerial.firstOrNull() ?: ""
+                        code = nonSerial.getOrNull(1) ?: ""
+                        patientName = nonSerial.drop(2).joinToString(" ")
+                    }
+                }
+
+                if (patientId.isBlank()) {
+                    patientId = currentNextId
+                    currentNextId = calculateNextId(currentNextId)
+                } else {
+                    currentNextId = calculateNextId(patientId)
+                }
+
+                if (code.isBlank()) {
+                    code = "101"
+                }
+
+                val cleanPatientId = patientId.uppercase(Locale.ROOT)
+                val cleanCode = code.uppercase(Locale.ROOT)
+                val cleanName = patientName.uppercase(Locale.ROOT)
+
+                val existingMatch = existingRecords.firstOrNull { it.patientId.equals(cleanPatientId, ignoreCase = true) }
+                if (existingMatch != null) {
+                    recordsToAdd.add(
+                        existingMatch.copy(
+                            code = cleanCode,
+                            patientName = if (cleanName.isNotBlank()) cleanName else existingMatch.patientName,
+                            notes = if (notes.isNotBlank()) notes else existingMatch.notes
+                        )
+                    )
+                } else {
+                    recordsToAdd.add(
+                        MedicalRecordEntity(
+                            id = 0,
+                            date = targetDate,
+                            patientId = cleanPatientId,
+                            code = cleanCode,
+                            patientName = cleanName,
+                            notes = notes
+                        )
+                    )
+                }
+
+                if (cleanCode.isNotBlank()) {
+                    presetCodesToAdd.add(
+                        PresetMedicalCodeEntity(
+                            code = cleanCode,
+                            name = "",
+                            category = "General"
+                        )
+                    )
+                }
+            }
+
+            if (recordsToAdd.isNotEmpty()) {
+                repository.saveRecords(recordsToAdd)
+                if (presetCodesToAdd.isNotEmpty()) {
+                    repository.savePresetCodes(presetCodesToAdd.distinctBy { it.code })
+                }
+                if (dateChanged) {
+                    _selectedDate.value = targetDate
+                }
+                val formattedDate = MedicalPrintUtils.formatDateShort(targetDate)
+                val countBn = BengaliUtils.toBengaliDigits(recordsToAdd.size.toString())
+                _uiEvent.emit("JSON থেকে $countBn টি এন্ট্রি সফলভাবে টেবিলে যুক্ত হয়েছে ($formattedDate)!")
+                return true
+            }
+        } catch (e: Exception) {
+            return false
+        }
+        return false
+    }
+
+    private fun parseDateToIso(raw: String?): String? {
+        if (raw.isNullOrBlank()) return null
+        val clean = BengaliUtils.toEnglishDigits(raw).trim()
+
+        // 1. Check YYYY-MM-DD or YYYY/MM/DD
+        val ymdMatch = Regex("""^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$""").find(clean)
+        if (ymdMatch != null) {
+            val (y, m, d) = ymdMatch.destructured
+            return String.format(Locale.US, "%04d-%02d-%02d", y.toInt(), m.toInt(), d.toInt())
+        }
+
+        // 2. Check DD/MM/YYYY or DD-MM-YYYY or DD.MM.YYYY
+        val dmyLongMatch = Regex("""^(\d{1,2})[-/. ](\d{1,2})[-/. ](\d{4})$""").find(clean)
+        if (dmyLongMatch != null) {
+            val (d, m, y) = dmyLongMatch.destructured
+            return String.format(Locale.US, "%04d-%02d-%02d", y.toInt(), m.toInt(), d.toInt())
+        }
+
+        // 3. Check DD/MM/YY or DD-MM-YY or DD.MM.YY (e.g. 10/09/26)
+        val dmyShortMatch = Regex("""^(\d{1,2})[-/. ](\d{1,2})[-/. ](\d{2})$""").find(clean)
+        if (dmyShortMatch != null) {
+            val (d, m, y) = dmyShortMatch.destructured
+            val yearFull = 2000 + y.toInt()
+            return String.format(Locale.US, "%04d-%02d-%02d", yearFull, m.toInt(), d.toInt())
+        }
+
+        return null
     }
 
     fun addMultiplePresetCodes(rawCodesText: String) {
