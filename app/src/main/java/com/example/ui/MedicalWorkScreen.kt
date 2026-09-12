@@ -91,6 +91,7 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -1158,6 +1159,36 @@ fun MedicalWorkScreen(
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+
+                    OutlinedButton(
+                        onClick = {
+                            val sampleFormatMessage = """
+                                নিচের এই ফরম্যাটে ডাটা লিখে আমাকে ফেরত পাঠান। "data" এর ভেতরে যত লাইন দরকার তত লাইন লিখতে পারেন, শুধু ID, কোড আর নাম বসিয়ে দিন:
+
+                                {
+                                  "date": "DD/MM/YY",
+                                  "data": [
+                                    { "ID": "AB260001", "কোড": "AF07", "নাম": "রোগীর নাম" },
+                                    { "ID": "AB260002", "কোড": "MD-01", "নাম": "রোগীর নাম" }
+                                  ]
+                                }
+
+                                পুরো টেক্সটটা (JSON সহ) কপি করে আমাকে পাঠিয়ে দিলে আমি সরাসরি অ্যাপে পেস্ট করে সব একসাথে যোগ করে দিতে পারব।
+                            """.trimIndent()
+                            clipboardManager.setText(AnnotatedString(sampleFormatMessage))
+                            coroutineScope.launch {
+                                snackbarHostState.showSnackbar("নমুনা ফরম্যাট ক্লিপবোর্ডে কপি হয়েছে, এখন যে কাউকে পাঠাতে পারবেন")
+                            }
+                        },
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(38.dp)
+                    ) {
+                        Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("📋 নমুনা ফরম্যাট কপি করুন (অন্যকে পাঠাতে)", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                    }
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
