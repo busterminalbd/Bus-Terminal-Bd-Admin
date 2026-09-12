@@ -55,6 +55,10 @@ class MedicalRepository(private val medicalDao: MedicalDao) {
     }
 
     // --- Preset Codes ---
+    suspend fun getAllPresetCodesList(): List<PresetMedicalCodeEntity> {
+        return medicalDao.getAllPresetCodesList()
+    }
+
     suspend fun savePresetCode(code: PresetMedicalCodeEntity) {
         medicalDao.insertPresetCode(code)
     }

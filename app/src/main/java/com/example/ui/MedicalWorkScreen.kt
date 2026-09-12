@@ -1,7 +1,10 @@
 package com.example.ui
 
 import android.app.DatePickerDialog
+import android.net.Uri
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -40,6 +43,7 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material.icons.filled.FormatListNumbered
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
@@ -101,8 +105,10 @@ import com.example.ui.theme.DarkForestGreen
 import com.example.ui.theme.HeadingFontFamily
 import com.example.util.BengaliUtils
 import com.example.util.MedicalPrintUtils
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.Calendar
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -146,6 +152,27 @@ fun MedicalWorkScreen(
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
     var editingRecord by remember { mutableStateOf<MedicalRecordEntity?>(null) }
     var showTopMenu by remember { mutableStateOf(false) }
+
+    val openJsonFileLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            coroutineScope.launch {
+                try {
+                    val fileContent = withContext(Dispatchers.IO) {
+                        context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+                    }
+                    if (!fileContent.isNullOrBlank()) {
+                        viewModel.bulkAddFromText(fileContent.trim())
+                    } else {
+                        snackbarHostState.showSnackbar("নির্বাচিত ফাইলটি খালি ছিল")
+                    }
+                } catch (e: Exception) {
+                    snackbarHostState.showSnackbar("ফাইল পড়তে সমস্যা হয়েছে: ${e.localizedMessage}")
+                }
+            }
+        }
+    }
 
     BackHandler {
         onNavigateBack()
@@ -293,6 +320,13 @@ fun MedicalWorkScreen(
                                 onClick = {
                                     showTopMenu = false
                                     MedicalPrintUtils.copyTableAsJson(context, selectedDate, records)
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("📥 JSON ফাইল থেকে লিস্ট ও কোড ইমপোর্ট") },
+                                onClick = {
+                                    showTopMenu = false
+                                    openJsonFileLauncher.launch("*/*")
                                 }
                             )
                             Divider()
@@ -1100,27 +1134,48 @@ fun MedicalWorkScreen(
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        text = "যেকোনো ফরম্যাটে পেস্ট করুন:\n• JSON কোড (যেমন: {\"date\": \"...\", \"data\": [...]})\n• শুধুমাত্র কোড (যেমন: AF07, MD-01, J007, USG, CBC)\n• আইডি ও কোড (যেমন: AB260948 AF07 TUHIN)\nস্বয়ংক্রিয়ভাবে আইডি, কোড ও নাম টেবিলে যুক্ত হবে।",
+                        text = "যেকোনো ফরম্যাটে পেস্ট করুন বা JSON ফাইল নির্বাচন করুন:\n• JSON কোড (যেমন: {\"date\": \"...\", \"data\": [...]})\n• শুধুমাত্র কোড (যেমন: AF07, MD-01, J007, USG, CBC)\n• আইডি ও কোড (যেমন: AB260948 AF07 TUHIN)\nস্বয়ংক্রিয়ভাবে আইডি ও নাম টেবিলে এবং কোড শর্টকাট তালিকায় যুক্ত হবে।",
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
-                    Button(
-                        onClick = {
-                            val clip = clipboardManager.getText()?.text?.trim() ?: ""
-                            if (clip.isNotBlank()) {
-                                rawTextInput = if (rawTextInput.isBlank()) clip else "$rawTextInput\n$clip"
-                            }
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(38.dp)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Icon(Icons.Default.ContentPaste, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("📋 ক্লিপবোর্ড থেকে সরাসরি পেস্ট করুন", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        Button(
+                            onClick = {
+                                openJsonFileLauncher.launch("*/*")
+                                showBulkPasteDialog = false
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(38.dp)
+                        ) {
+                            Icon(Icons.Default.FileOpen, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("📁 JSON ফাইল", color = MaterialTheme.colorScheme.onPrimaryContainer, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                        }
+
+                        Button(
+                            onClick = {
+                                val clip = clipboardManager.getText()?.text?.trim() ?: ""
+                                if (clip.isNotBlank()) {
+                                    rawTextInput = if (rawTextInput.isBlank()) clip else "$rawTextInput\n$clip"
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(38.dp)
+                        ) {
+                            Icon(Icons.Default.ContentPaste, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("📋 ক্লিপবোর্ড পেস্ট", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                        }
                     }
 
                     if (isJsonDetected) {

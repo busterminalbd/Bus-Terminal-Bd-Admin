@@ -316,6 +316,13 @@ object AppBackupManager {
                 if (toInsert.isNotEmpty()) {
                     medicalDao.insertRecords(toInsert)
                     restoredMedicalCount = toInsert.size
+                    val autoPresets = toInsert.map { it.code.trim() }
+                        .filter { it.isNotBlank() }
+                        .map { PresetMedicalCodeEntity(code = it.uppercase(Locale.ROOT), name = "", category = "General") }
+                        .distinctBy { it.code }
+                    if (autoPresets.isNotEmpty()) {
+                        medicalDao.insertPresetCodes(autoPresets)
+                    }
                 }
             }
 
