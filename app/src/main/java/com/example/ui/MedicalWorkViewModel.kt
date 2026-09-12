@@ -55,6 +55,7 @@ class MedicalWorkViewModel(application: Application) : AndroidViewModel(applicat
 
         viewModelScope.launch {
             repository.seedDefaultPresetCodesIfEmpty()
+            cleanInvalidPresetCodes()
         }
 
         allRecords = repository.allRecords.stateIn(
@@ -155,22 +156,33 @@ class MedicalWorkViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     fun addRecord(patientId: String, code: String, patientName: String = "", notes: String = "") {
-        val pId = patientId.trim().uppercase()
-        val c = code.trim().uppercase()
-        val n = patientName.trim().uppercase()
+        val pId = patientId.trim()
+        val c = code.trim()
+        val n = patientName.trim()
 
         if (pId.isBlank() && c.isBlank()) {
             viewModelScope.launch { _uiEvent.emit("আইডি বা কোড অন্তত একটি পূরণ করুন") }
             return
         }
 
+        // If JSON was pasted into ID or Code field
+        if (c.startsWith("{") || c.startsWith("[") || pId.startsWith("{") || pId.startsWith("[")) {
+            val jsonText = if (c.startsWith("{") || c.startsWith("[")) c else pId
+            bulkAddFromText(jsonText)
+            return
+        }
+
+        val pIdUpper = pId.uppercase()
+        val cUpper = c.uppercase()
+        val nUpper = n.uppercase()
+
         viewModelScope.launch {
             // Check if code contains multiple codes separated by comma, semicolon or newline
-            val codeTokens = c.split(Regex("[,;\\n\\r]+")).map { it.trim() }.filter { it.isNotBlank() }
+            val codeTokens = cUpper.split(Regex("[,;\\n\\r]+")).map { it.trim() }.filter { it.isNotBlank() }
             if (codeTokens.size > 1) {
                 val recordsToAdd = mutableListOf<MedicalRecordEntity>()
                 val presetCodesToAdd = mutableListOf<PresetMedicalCodeEntity>()
-                var currentId = pId.ifBlank { nextSuggestedPatientId.value }
+                var currentId = pIdUpper.ifBlank { nextSuggestedPatientId.value }
 
                 for (singleCode in codeTokens) {
                     recordsToAdd.add(
@@ -178,34 +190,38 @@ class MedicalWorkViewModel(application: Application) : AndroidViewModel(applicat
                             date = _selectedDate.value,
                             patientId = currentId,
                             code = singleCode,
-                            patientName = n,
+                            patientName = nUpper,
                             notes = notes.trim()
                         )
                     )
-                    presetCodesToAdd.add(
-                        PresetMedicalCodeEntity(
-                            code = singleCode,
-                            name = "",
-                            category = "General"
+                    if (isValidPresetCode(singleCode)) {
+                        presetCodesToAdd.add(
+                            PresetMedicalCodeEntity(
+                                code = singleCode,
+                                name = "",
+                                category = "General"
+                            )
                         )
-                    )
+                    }
                     currentId = calculateNextId(currentId)
                 }
                 repository.saveRecords(recordsToAdd)
-                repository.savePresetCodes(presetCodesToAdd)
-                _uiEvent.emit("${recordsToAdd.size} টি রেকর্ড ও কোড সফলভাবে যোগ হয়েছে!")
+                if (presetCodesToAdd.isNotEmpty()) {
+                    repository.savePresetCodes(presetCodesToAdd)
+                }
+                _uiEvent.emit("${recordsToAdd.size} টি রেকর্ড সফলভাবে যোগ হয়েছে!")
             } else {
-                val finalCode = codeTokens.firstOrNull() ?: c
-                val finalId = pId.ifBlank { nextSuggestedPatientId.value }
+                val finalCode = codeTokens.firstOrNull() ?: cUpper
+                val finalId = pIdUpper.ifBlank { nextSuggestedPatientId.value }
                 val record = MedicalRecordEntity(
                     date = _selectedDate.value,
                     patientId = finalId,
                     code = finalCode,
-                    patientName = n,
+                    patientName = nUpper,
                     notes = notes.trim()
                 )
                 repository.saveRecord(record)
-                if (finalCode.isNotBlank()) {
+                if (finalCode.isNotBlank() && isValidPresetCode(finalCode)) {
                     repository.savePresetCode(
                         PresetMedicalCodeEntity(
                             code = finalCode,
@@ -345,13 +361,15 @@ class MedicalWorkViewModel(application: Application) : AndroidViewModel(applicat
                             patientName = nameTokens.uppercase()
                         )
                     )
-                    presetCodesToAdd.add(
-                        PresetMedicalCodeEntity(
-                            code = codeToken.uppercase(),
-                            name = "",
-                            category = "General"
+                    if (isValidPresetCode(codeToken.uppercase())) {
+                        presetCodesToAdd.add(
+                            PresetMedicalCodeEntity(
+                                code = codeToken.uppercase(),
+                                name = "",
+                                category = "General"
+                            )
                         )
-                    )
+                    }
                 } else {
                     // No explicit Patient ID found in this line/item!
                     // This means the user pasted JUST CODES (e.g. "AF07", "MD-01", "101", "CBC, USG")
@@ -365,13 +383,15 @@ class MedicalWorkViewModel(application: Application) : AndroidViewModel(applicat
                                 patientName = ""
                             )
                         )
-                        presetCodesToAdd.add(
-                            PresetMedicalCodeEntity(
-                                code = codeVal,
-                                name = "",
-                                category = "General"
+                        if (isValidPresetCode(codeVal)) {
+                            presetCodesToAdd.add(
+                                PresetMedicalCodeEntity(
+                                    code = codeVal,
+                                    name = "",
+                                    category = "General"
+                                )
                             )
-                        )
+                        }
                         currentNextId = calculateNextId(currentNextId)
                     }
                 }
@@ -695,9 +715,9 @@ class MedicalWorkViewModel(application: Application) : AndroidViewModel(applicat
                         )
                     }
 
-                    // Automatically extract and register the code into shortcut/preset list
-                    if (cleanCode.isNotBlank()) {
-                        // 1. Add compound / full code as a preset
+                    // Automatically extract and register ONLY the code into shortcut/preset list
+                    // IDs, patient names, and dates are strictly ignored from the shortcut list
+                    if (isValidPresetCode(cleanCode)) {
                         presetCodesToAdd.add(
                             PresetMedicalCodeEntity(
                                 code = cleanCode,
@@ -705,23 +725,23 @@ class MedicalWorkViewModel(application: Application) : AndroidViewModel(applicat
                                 category = "General"
                             )
                         )
+                    }
 
-                        // 2. Also split compound codes (e.g. "CBC, USG", "AF07; MD-01", "AF07/MD-01") into individual shortcuts
-                        val subTokens = cleanCode.split(Regex("[,;\\n\\r/]+"))
-                            .map { it.replace(Regex("""[()[\]{}]"""), " ").trim() }
-                            .flatMap { it.split(Regex("\\s+")) }
-                            .map { it.trim().uppercase(Locale.ROOT) }
-                            .filter { it.isNotBlank() && it.length in 2..25 && it != "DUE" }
+                    // 2. Also split compound codes (e.g. "CBC, USG", "AF07; MD-01", "AF07/MD-01") into individual shortcuts
+                    val subTokens = cleanCode.split(Regex("[,;\\n\\r/]+"))
+                        .map { it.replace(Regex("""[()[\]{}]"""), " ").trim() }
+                        .flatMap { it.split(Regex("\\s+")) }
+                        .map { it.trim().uppercase(Locale.ROOT) }
+                        .filter { isValidPresetCode(it) && it != "DUE" }
 
-                        for (sub in subTokens) {
-                            presetCodesToAdd.add(
-                                PresetMedicalCodeEntity(
-                                    code = sub,
-                                    name = "",
-                                    category = "General"
-                                )
+                    for (sub in subTokens) {
+                        presetCodesToAdd.add(
+                            PresetMedicalCodeEntity(
+                                code = sub,
+                                name = "",
+                                category = "General"
                             )
-                        }
+                        )
                     }
                 }
             }
@@ -729,8 +749,9 @@ class MedicalWorkViewModel(application: Application) : AndroidViewModel(applicat
             // Save preset codes to database so they appear in shortcut dropdown
             var newPresetCount = 0
             if (presetCodesToAdd.isNotEmpty()) {
+                val validPresets = presetCodesToAdd.filter { isValidPresetCode(it.code) }
                 val existingPresets = repository.getAllPresetCodesList().associateBy { it.code.uppercase(Locale.ROOT) }
-                val uniquePresets = presetCodesToAdd.distinctBy { it.code.uppercase(Locale.ROOT) }
+                val uniquePresets = validPresets.distinctBy { it.code.uppercase(Locale.ROOT) }
                 val mergedPresets = uniquePresets.map { newPreset ->
                     val existing = existingPresets[newPreset.code.uppercase(Locale.ROOT)]
                     if (existing != null && newPreset.name.isBlank() && existing.name.isNotBlank()) {
@@ -795,6 +816,146 @@ class MedicalWorkViewModel(application: Application) : AndroidViewModel(applicat
         return null
     }
 
+    companion object {
+        fun isValidPresetCode(code: String): Boolean {
+            val trimmed = code.trim()
+            if (trimmed.length < 2 || trimmed.length > 30) return false
+
+            // Reject JSON syntax, brackets, braces, colons, quotes
+            if (trimmed.any { it in "{}[];:\"\\=<>*^$" }) return false
+
+            val upper = trimmed.uppercase(Locale.ROOT)
+
+            // Reject JSON field names, boolean values, common record keys
+            val forbiddenKeywords = setOf(
+                "ID", "PATIENTID", "PATIENT_ID", "PATIENT ID", "NAME", "PATIENTNAME",
+                "PATIENT_NAME", "PATIENT NAME", "DATE", "DATA", "RECORDS", "RECORD",
+                "NOTES", "NOTE", "TIMESTAMP", "CATEGORY", "TESTS", "TEST", "CODE",
+                "CODES", "ITEM", "ITEMS", "NULL", "TRUE", "FALSE", "UNDEFINED",
+                "OBJECT", "ARRAY", "LIST", "ROW", "ROWS", "ENTRY", "ENTRIES",
+                "আইডি", "নাম", "তারিখ", "কোড", "মন্তব্য", "টেস্ট", "রোগীর নাম", "বিবরণ"
+            )
+            if (upper in forbiddenKeywords) return false
+
+            // Reject patient IDs like AB260901, AB260948, PID1020, or 5+ digits
+            if (upper.matches(Regex("^[A-Z]{1,4}\\d{4,9}$")) || upper.matches(Regex("^\\d{5,12}$"))) {
+                return false
+            }
+
+            // Reject dates
+            if (upper.matches(Regex("^\\d{4}[-/.]\\d{2}[-/.]\\d{2}$")) || upper.matches(Regex("^\\d{2}[-/.]\\d{2}[-/.]\\d{4}$"))) {
+                return false
+            }
+
+            // Reject person names starting with typical honorifics
+            val namePrefixes = listOf("MD ", "MD. ", "MST ", "MST. ", "MR ", "MR. ", "MRS ", "MRS. ", "DR ", "DR. ", "MOHAMMAD ")
+            if (namePrefixes.any { upper.startsWith(it) }) {
+                return false
+            }
+
+            return true
+        }
+
+        fun extractCodesOnlyFromJson(jsonStr: String): List<String> {
+            val extractedCodes = mutableListOf<String>()
+            try {
+                val trimmed = jsonStr.trim()
+                val startIdx = trimmed.indexOfAny(charArrayOf('{', '['))
+                val endIdx = trimmed.lastIndexOfAny(charArrayOf('}', ']'))
+                if (startIdx == -1 || endIdx <= startIdx) return emptyList()
+                val jsonCleaned = trimmed.substring(startIdx, endIdx + 1)
+
+                fun extractFromObject(obj: JSONObject) {
+                    val codeKeys = listOf(
+                        "code", "কোড", "Code", "CODE", "testCode", "test_code",
+                        "testCodes", "test_codes", "medical_code", "short_code",
+                        "shortCode", "test", "tests", "টেস্ট", "পরীক্ষা"
+                    )
+                    for (k in codeKeys) {
+                        if (obj.has(k) && !obj.isNull(k)) {
+                            val opt = obj.opt(k)
+                            if (opt is JSONArray) {
+                                for (idx in 0 until opt.length()) {
+                                    val c = opt.optString(idx).trim()
+                                    if (isValidPresetCode(c)) extractedCodes.add(c)
+                                }
+                            } else if (opt != null) {
+                                val c = opt.toString().trim()
+                                if (c.isNotBlank()) {
+                                    val parts = c.split(Regex("[,;/]+"))
+                                    for (p in parts) {
+                                        val cleanP = p.trim()
+                                        if (isValidPresetCode(cleanP)) extractedCodes.add(cleanP)
+                                    }
+                                }
+                            }
+                            return
+                        }
+                    }
+                }
+
+                if (jsonCleaned.startsWith("{")) {
+                    val rootObj = JSONObject(jsonCleaned)
+                    val directCodeKeys = listOf("codes", "presetCodes", "preset_codes", "medical_codes", "shortcuts", "কোডসমূহ")
+                    for (dk in directCodeKeys) {
+                        val arr = rootObj.optJSONArray(dk) ?: continue
+                        for (i in 0 until arr.length()) {
+                            val item = arr.opt(i) ?: continue
+                            if (item is JSONObject) extractFromObject(item)
+                            else if (item is String && isValidPresetCode(item)) extractedCodes.add(item.trim())
+                        }
+                    }
+
+                    val arrayKeys = listOf("data", "records", "rows", "items", "patients", "list", "entries", "তথ্য")
+                    for (ak in arrayKeys) {
+                        val arr = rootObj.optJSONArray(ak) ?: continue
+                        for (i in 0 until arr.length()) {
+                            val item = arr.opt(i) ?: continue
+                            if (item is JSONObject) extractFromObject(item)
+                        }
+                    }
+
+                    val keys = rootObj.keys()
+                    while (keys.hasNext()) {
+                        val k = keys.next()
+                        if (k !in directCodeKeys && k !in arrayKeys) {
+                            val arr = rootObj.optJSONArray(k) ?: continue
+                            for (i in 0 until arr.length()) {
+                                val item = arr.opt(i) ?: continue
+                                if (item is JSONObject) extractFromObject(item)
+                            }
+                        }
+                    }
+                } else if (jsonCleaned.startsWith("[")) {
+                    val rootArr = JSONArray(jsonCleaned)
+                    for (i in 0 until rootArr.length()) {
+                        val item = rootArr.opt(i) ?: continue
+                        if (item is JSONObject) {
+                            extractFromObject(item)
+                        } else if (item is String && isValidPresetCode(item)) {
+                            extractedCodes.add(item.trim())
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                // Ignore parse exceptions
+            }
+            return extractedCodes.filter { isValidPresetCode(it) }.distinctBy { it.uppercase(Locale.ROOT) }
+        }
+    }
+
+    suspend fun cleanInvalidPresetCodes() {
+        try {
+            val currentPresets = repository.getAllPresetCodesList()
+            val invalidCodes = currentPresets.filter { !isValidPresetCode(it.code) }
+            for (invalid in invalidCodes) {
+                repository.deletePresetCode(invalid.code)
+            }
+        } catch (e: Exception) {
+            // Ignore
+        }
+    }
+
     fun addMultiplePresetCodes(rawCodesText: String) {
         val trimmed = rawCodesText.trim()
         if (trimmed.isBlank()) {
@@ -803,32 +964,46 @@ class MedicalWorkViewModel(application: Application) : AndroidViewModel(applicat
         }
 
         viewModelScope.launch {
-            // Split by comma, semicolon, newline, tab, whitespace
-            val tokens = trimmed.split(Regex("[,;\\n\\r\\t]+"))
-                .map { it.trim().uppercase() }
-                .flatMap { it.split(Regex("\\s+")) }
-                .map { 
-                    it.replace(Regex("^(?:\\d+|[০-৯]+)[.)\\-:]\\s*"), "")
-                      .replace(Regex("^[•\\-*#]"), "")
-                      .trim() 
-                }
-                .filter { it.isNotBlank() }
-                .distinct()
+            // Check if input is JSON (e.g. user pasted JSON file text)
+            val jsonCodes = if (trimmed.contains("{") || trimmed.contains("[")) {
+                extractCodesOnlyFromJson(trimmed)
+            } else {
+                emptyList()
+            }
 
-            if (tokens.isEmpty()) {
-                _uiEvent.emit("কোনো কোড চিহ্নিত করা যায়নি")
+            val finalCodes = if (jsonCodes.isNotEmpty()) {
+                jsonCodes
+            } else {
+                // Split by comma, semicolon, newline, tab, whitespace
+                trimmed.split(Regex("[,;\\n\\r\\t]+"))
+                    .map { it.trim().uppercase(Locale.ROOT) }
+                    .flatMap { it.split(Regex("\\s+")) }
+                    .map { 
+                        it.replace(Regex("^(?:\\d+|[০-৯]+)[.)\\-:]\\s*"), "")
+                          .replace(Regex("^[•\\-*#]"), "")
+                          .trim() 
+                    }
+                    .filter { isValidPresetCode(it) }
+                    .distinct()
+            }
+
+            if (finalCodes.isEmpty()) {
+                _uiEvent.emit("কোনো সঠিক কোড চিহ্নিত করা যায়নি (আইডি বা নাম প্রিসেট তালিকায় যোগ হবে না)")
                 return@launch
             }
 
-            val presetEntities = tokens.map { codeStr ->
+            val existingPresets = repository.getAllPresetCodesList().associateBy { it.code.uppercase(Locale.ROOT) }
+            val presetEntities = finalCodes.map { codeStr ->
+                val upper = codeStr.uppercase(Locale.ROOT)
+                val existing = existingPresets[upper]
                 PresetMedicalCodeEntity(
-                    code = codeStr,
-                    name = "",
-                    category = "General"
+                    code = upper,
+                    name = existing?.name ?: "",
+                    category = existing?.category ?: "General"
                 )
             }
             repository.savePresetCodes(presetEntities)
-            _uiEvent.emit("${tokens.size} টি নতুন কোড কুইক তালিকায় যোগ হয়েছে!")
+            _uiEvent.emit("${finalCodes.size} টি কোড সফলভাবে শর্টকাট তালিকায় যোগ হয়েছে!")
         }
     }
 
@@ -845,18 +1020,32 @@ class MedicalWorkViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     fun addPresetCode(code: String, name: String = "", category: String = "General") {
-        val cleanCode = code.trim().uppercase()
+        val cleanCode = code.trim()
         if (cleanCode.isBlank()) return
 
+        // If JSON passed to addPresetCode, delegate to addMultiplePresetCodes
+        if (cleanCode.contains("{") || cleanCode.contains("[")) {
+            addMultiplePresetCodes(cleanCode)
+            return
+        }
+
+        if (!isValidPresetCode(cleanCode)) {
+            viewModelScope.launch {
+                _uiEvent.emit("সতর্কতা: '$cleanCode' একটি সঠিক কোড নয় (আইডি বা নাম শর্টকাট কোড হিসেবে যোগ হবে না)")
+            }
+            return
+        }
+
+        val upperCode = cleanCode.uppercase(Locale.ROOT)
         viewModelScope.launch {
             repository.savePresetCode(
                 PresetMedicalCodeEntity(
-                    code = cleanCode,
+                    code = upperCode,
                     name = name.trim(),
                     category = category.trim().ifBlank { "General" }
                 )
             )
-            _uiEvent.emit("নতুন প্রিসেট কোড যোগ হয়েছে: $cleanCode")
+            _uiEvent.emit("নতুন প্রিসেট কোড যোগ হয়েছে: $upperCode")
         }
     }
 

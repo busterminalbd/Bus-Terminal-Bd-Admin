@@ -13,6 +13,7 @@ import com.example.data.AppDatabase
 import com.example.data.FoodBillEntity
 import com.example.data.MedicalRecordEntity
 import com.example.data.PresetMedicalCodeEntity
+import com.example.ui.MedicalWorkViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -317,7 +318,7 @@ object AppBackupManager {
                     medicalDao.insertRecords(toInsert)
                     restoredMedicalCount = toInsert.size
                     val autoPresets = toInsert.map { it.code.trim() }
-                        .filter { it.isNotBlank() }
+                        .filter { MedicalWorkViewModel.isValidPresetCode(it) }
                         .map { PresetMedicalCodeEntity(code = it.uppercase(Locale.ROOT), name = "", category = "General") }
                         .distinctBy { it.code }
                     if (autoPresets.isNotEmpty()) {
@@ -332,11 +333,11 @@ object AppBackupManager {
                 val list = mutableListOf<PresetMedicalCodeEntity>()
                 for (i in 0 until array.length()) {
                     val obj = array.getJSONObject(i)
-                    val c = obj.optString("code", "")
-                    if (c.isNotBlank()) {
+                    val c = obj.optString("code", "").trim()
+                    if (MedicalWorkViewModel.isValidPresetCode(c)) {
                         list.add(
                             PresetMedicalCodeEntity(
-                                code = c,
+                                code = c.uppercase(Locale.ROOT),
                                 name = obj.optString("name", ""),
                                 category = obj.optString("category", "General")
                             )

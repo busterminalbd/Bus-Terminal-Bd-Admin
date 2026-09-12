@@ -553,12 +553,22 @@ fun MedicalWorkScreen(
                                                     onDone = {
                                                         val trimmed = quickCodeInputText.trim()
                                                         if (trimmed.isNotBlank()) {
-                                                            if (trimmed.contains(",") || trimmed.contains(" ") || trimmed.contains("\n")) {
+                                                            if (trimmed.contains("{") || trimmed.contains("[") || trimmed.contains(",") || trimmed.contains(" ") || trimmed.contains("\n")) {
                                                                 viewModel.addMultiplePresetCodes(trimmed)
                                                             } else {
                                                                 viewModel.addPresetCode(trimmed)
                                                             }
-                                                            inputCode = trimmed.split(Regex("[,;\\s]+")).firstOrNull()?.uppercase() ?: trimmed.uppercase()
+                                                            if (trimmed.contains("{") || trimmed.contains("[")) {
+                                                                val extracted = MedicalWorkViewModel.extractCodesOnlyFromJson(trimmed)
+                                                                if (extracted.isNotEmpty()) {
+                                                                    inputCode = extracted.first()
+                                                                }
+                                                            } else {
+                                                                val candidate = trimmed.split(Regex("[,;\\s]+")).firstOrNull()?.uppercase() ?: trimmed.uppercase()
+                                                                if (MedicalWorkViewModel.isValidPresetCode(candidate)) {
+                                                                    inputCode = candidate
+                                                                }
+                                                            }
                                                             quickCodeInputText = ""
                                                         }
                                                     }
@@ -569,12 +579,22 @@ fun MedicalWorkScreen(
                                                 onClick = {
                                                     val trimmed = quickCodeInputText.trim()
                                                     if (trimmed.isNotBlank()) {
-                                                        if (trimmed.contains(",") || trimmed.contains(" ") || trimmed.contains("\n")) {
+                                                        if (trimmed.contains("{") || trimmed.contains("[") || trimmed.contains(",") || trimmed.contains(" ") || trimmed.contains("\n")) {
                                                             viewModel.addMultiplePresetCodes(trimmed)
                                                         } else {
                                                             viewModel.addPresetCode(trimmed)
                                                         }
-                                                        inputCode = trimmed.split(Regex("[,;\\s]+")).firstOrNull()?.uppercase() ?: trimmed.uppercase()
+                                                        if (trimmed.contains("{") || trimmed.contains("[")) {
+                                                            val extracted = MedicalWorkViewModel.extractCodesOnlyFromJson(trimmed)
+                                                            if (extracted.isNotEmpty()) {
+                                                                inputCode = extracted.first()
+                                                            }
+                                                        } else {
+                                                            val candidate = trimmed.split(Regex("[,;\\s]+")).firstOrNull()?.uppercase() ?: trimmed.uppercase()
+                                                            if (MedicalWorkViewModel.isValidPresetCode(candidate)) {
+                                                                inputCode = candidate
+                                                            }
+                                                        }
                                                         quickCodeInputText = ""
                                                     }
                                                 },
