@@ -1183,7 +1183,16 @@ fun MedicalWorkScreen(
                             onClick = {
                                 val clip = clipboardManager.getText()?.text?.trim() ?: ""
                                 if (clip.isNotBlank()) {
-                                    rawTextInput = if (rawTextInput.isBlank()) clip else "$rawTextInput\n$clip"
+                                    val clipLooksLikeJson = (clip.contains("{") && clip.contains("}")) ||
+                                            (clip.contains("[") && clip.contains("]"))
+                                    rawTextInput = if (rawTextInput.isBlank() || clipLooksLikeJson) {
+                                        // Overwrite instead of concatenating, so leftover/incomplete
+                                        // text in the box can't merge with a fresh JSON paste and
+                                        // break the JSON structure.
+                                        clip
+                                    } else {
+                                        "$rawTextInput\n$clip"
+                                    }
                                 }
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
