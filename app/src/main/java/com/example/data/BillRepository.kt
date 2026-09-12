@@ -1,22 +1,14 @@
 package com.example.data
 
-import com.squareup.moshi.Moshi
-import com.squareup.moshi.Types
-import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import org.json.JSONArray
+import org.json.JSONObject
 
 class BillRepository(private val dao: FoodBillDao) {
 
-    private val moshi = Moshi.Builder()
-        .add(KotlinJsonAdapterFactory())
-        .build()
-
-    private val listType = Types.newParameterizedType(List::class.java, BillItem::class.java)
-    private val jsonAdapter = moshi.adapter<List<BillItem>>(listType)
-
     val allBills: Flow<List<FoodBillUiModel>> = dao.getAllBills().map { list ->
-        list.map { entity -> entity.toUiModel(jsonAdapter) }
+        list.map { entity -> entity.toUiModel() }
     }
 
     val totalSpentAllTime: Flow<Double> = dao.getTotalSpentAllTime().map { it ?: 0.0 }
@@ -34,7 +26,7 @@ class BillRepository(private val dao: FoodBillDao) {
         billType: String = "market",
         showSignature: Boolean = true
     ): Long {
-        val itemsJson = jsonAdapter.toJson(items)
+        val itemsJson = serializeItems(items)
         val entity = FoodBillEntity(
             id = id,
             dateString = dateString,
@@ -62,15 +54,11 @@ class BillRepository(private val dao: FoodBillDao) {
 
     suspend fun getBillById(id: Long): FoodBillUiModel? {
         val entity = dao.getBillById(id) ?: return null
-        return entity.toUiModel(jsonAdapter)
+        return entity.toUiModel()
     }
 
-    private fun FoodBillEntity.toUiModel(adapter: com.squareup.moshi.JsonAdapter<List<BillItem>>): FoodBillUiModel {
-        val parsedItems = try {
-            adapter.fromJson(itemsJson) ?: emptyList()
-        } catch (e: Exception) {
-            emptyList()
-        }
+    private fun FoodBillEntity.toUiModel(): FoodBillUiModel {
+        val parsedItems = deserializeItems(itemsJson)
         return FoodBillUiModel(
             id = id,
             dateString = dateString,
@@ -84,6 +72,45 @@ class BillRepository(private val dao: FoodBillDao) {
             billType = billType,
             showSignature = showSignature
         )
+    }
+
+    companion object {
+        fun serializeItems(items: List<BillItem>): String {
+            val array = JSONArray()
+            for (item in items) {
+                val obj = JSONObject()
+                obj.put("id", item.id)
+                obj.put("name", item.name)
+                obj.put("quantity", item.quantity)
+                obj.put("rate", item.rate)
+                obj.put("amount", item.amount)
+                array.put(obj)
+            }
+            return array.toString()
+        }
+
+        fun deserializeItems(json: String): List<BillItem> {
+            if (json.isBlank()) return emptyList()
+            return try {
+                val array = JSONArray(json)
+                val list = ArrayList<BillItem>(array.length())
+                for (i in 0 until array.length()) {
+                    val obj = array.getJSONObject(i)
+                    list.add(
+                        BillItem(
+                            id = obj.optString("id", java.util.UUID.randomUUID().toString()),
+                            name = obj.optString("name", ""),
+                            quantity = obj.optString("quantity", ""),
+                            rate = obj.optString("rate", "0"),
+                            amount = obj.optDouble("amount", 0.0)
+                        )
+                    )
+                }
+                list
+            } catch (e: Exception) {
+                emptyList()
+            }
+        }
     }
 }
 
