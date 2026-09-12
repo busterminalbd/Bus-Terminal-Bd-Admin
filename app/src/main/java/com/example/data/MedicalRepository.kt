@@ -72,22 +72,10 @@ class MedicalRepository(private val medicalDao: MedicalDao) {
     }
 
     suspend fun seedDefaultPresetCodesIfEmpty() {
-        val existing = medicalDao.getAllPresetCodesList()
-        if (existing.isEmpty()) {
-            val defaults = listOf(
-                PresetMedicalCodeEntity(code = "AF07", name = "AF07", category = "General"),
-                PresetMedicalCodeEntity(code = "MD-01", name = "MD-01", category = "General"),
-                PresetMedicalCodeEntity(code = "J007 (DUE)", name = "J007 (DUE)", category = "Due"),
-                PresetMedicalCodeEntity(code = "USG", name = "Ultrasonography", category = "Imaging"),
-                PresetMedicalCodeEntity(code = "CBC", name = "Complete Blood Count", category = "Pathology"),
-                PresetMedicalCodeEntity(code = "ECG", name = "Electrocardiogram", category = "Cardiology"),
-                PresetMedicalCodeEntity(code = "RBS", name = "Random Blood Sugar", category = "Pathology"),
-                PresetMedicalCodeEntity(code = "X-RAY", name = "X-Ray Chest/Bone", category = "Imaging"),
-                PresetMedicalCodeEntity(code = "SERUM", name = "Serum Creatinine", category = "Pathology"),
-                PresetMedicalCodeEntity(code = "URINE", name = "Urine R/E", category = "Pathology")
-            )
-            medicalDao.insertPresetCodes(defaults)
-        }
+        // Intentionally left empty: the code dropdown/shortcut list should start
+        // blank for every user instead of being pre-filled with demo/sample codes.
+        // New codes are added automatically as the user types them or pastes
+        // bulk/JSON data (see MedicalWorkViewModel.bulkAddFromText / tryParseAndImportJson).
     }
 
     // --- Code Groups (Owners) ---
