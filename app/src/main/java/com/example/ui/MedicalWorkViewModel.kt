@@ -310,12 +310,11 @@ class MedicalWorkViewModel(application: Application) : AndroidViewModel(applicat
                     (trimmed.contains("[") && trimmed.contains("]"))
 
             if (hasJsonTokens) {
-                if (tryParseAndImportJson(trimmed)) {
-                    return@launch
-                } else {
-                    _uiEvent.emit("JSON ফরম্যাটটি সঠিকভাবে পড়া সম্ভব হয়নি বা কোনো বৈধ রেকর্ড পাওয়া যায়নি")
-                    return@launch
-                }
+                // tryParseAndImportJson now emits its own specific reason on
+                // failure (including the raw exception message where relevant)
+                // instead of us always showing one generic line here.
+                tryParseAndImportJson(trimmed)
+                return@launch
             }
 
             // Determine line separator or item separator for plain text
@@ -662,6 +661,7 @@ class MedicalWorkViewModel(application: Application) : AndroidViewModel(applicat
             }
 
             if (itemsList.isEmpty() && presetCodesToAdd.isEmpty()) {
+                _uiEvent.emit("JSON এর ভেতর কোনো এন্ট্রি/অ্যারে খুঁজে পাওয়া যায়নি (ডিবাগ: itemsList ও presetCodesToAdd দুটোই খালি)")
                 return false
             }
 
@@ -939,6 +939,7 @@ class MedicalWorkViewModel(application: Application) : AndroidViewModel(applicat
                 return true
             }
         } catch (e: Exception) {
+            _uiEvent.emit("JSON পার্স করার সময় সমস্যা হয়েছে (ডিবাগ তথ্য): ${e.javaClass.simpleName}: ${e.message}")
             return false
         }
         return false
