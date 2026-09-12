@@ -16,7 +16,7 @@ import androidx.room.migration.Migration
         CodeGroupItemEntity::class,
         PresetMedicalCodeEntity::class
     ],
-    version = 8,
+    version = 9,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -144,6 +144,56 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        // Some devices ended up with a stale/mismatched `medical_records` table on disk
+        // (e.g. left over from the short-lived version-3 build, which the old
+        // "CREATE TABLE IF NOT EXISTS" in MIGRATION_7_8 silently skipped fixing
+        // because a table with that name already existed). Room then found the
+        // on-disk columns didn't match the compiled entity and crashed with
+        // "Migration didn't properly handle: medical_records(...)" on launch.
+        // Force-recreate these tables from scratch so every device ends up with
+        // the exact schema Room expects, regardless of what was left behind.
+        private val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("DROP TABLE IF EXISTS medical_records")
+                db.execSQL("DROP TABLE IF EXISTS code_groups")
+                db.execSQL("DROP TABLE IF EXISTS code_group_items")
+                db.execSQL("DROP TABLE IF EXISTS preset_medical_codes")
+
+                db.execSQL("""
+                    CREATE TABLE `medical_records` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `date` TEXT NOT NULL,
+                        `patientId` TEXT NOT NULL,
+                        `code` TEXT NOT NULL,
+                        `patientName` TEXT NOT NULL DEFAULT '',
+                        `timestamp` INTEGER NOT NULL DEFAULT 0,
+                        `notes` TEXT NOT NULL DEFAULT ''
+                    )
+                """.trimIndent())
+                db.execSQL("""
+                    CREATE TABLE `code_groups` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `groupName` TEXT NOT NULL,
+                        `description` TEXT NOT NULL DEFAULT ''
+                    )
+                """.trimIndent())
+                db.execSQL("""
+                    CREATE TABLE `code_group_items` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `groupId` INTEGER NOT NULL,
+                        `code` TEXT NOT NULL
+                    )
+                """.trimIndent())
+                db.execSQL("""
+                    CREATE TABLE `preset_medical_codes` (
+                        `code` TEXT PRIMARY KEY NOT NULL,
+                        `name` TEXT NOT NULL DEFAULT '',
+                        `category` TEXT NOT NULL DEFAULT 'General'
+                    )
+                """.trimIndent())
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -151,7 +201,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "albaraka_food_bill_db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_4, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_4, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
                     // Safety net only: if some other unexpected version gap is hit,
                     // fall back to a clean database rather than crashing on launch.
                     .fallbackToDestructiveMigration()
