@@ -3,6 +3,7 @@ package com.example.ui.components
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -35,6 +36,7 @@ import androidx.compose.ui.graphics.Color
  * composable rather than writing a second TopAppBar from scratch — that's
  * how the header design silently drifts apart between tools.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ToolTopAppBar(
     title: @Composable () -> Unit,
