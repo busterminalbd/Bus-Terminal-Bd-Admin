@@ -1132,19 +1132,12 @@ fun SawtoothDivider() {
             drawPath(path = path, color = toothColor)
         }
 
-        // Double rule line (Classic Gold / Accent + Ledger Red)
+        // Rule line (Classic Gold / Accent)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(2.dp)
                 .background(ruleGold)
-        )
-        Spacer(modifier = Modifier.height(1.dp))
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(1.dp)
-                .background(LedgerRed)
         )
     }
 }

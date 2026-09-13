@@ -26,7 +26,6 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Work
@@ -87,7 +86,6 @@ fun AdvanceSalaryFormCard(
     onDateClick: () -> Unit,
     onApplicantNameChange: (String) -> Unit,
     onDesignationChange: (String) -> Unit,
-    onContactNumberChange: (String) -> Unit,
     onMonthlySalaryChange: (String) -> Unit,
     onAdvanceAmountChange: (String) -> Unit,
     onAdvanceAmountInWordsChange: (String) -> Unit,
@@ -286,32 +284,17 @@ fun AdvanceSalaryFormCard(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                OutlinedTextField(
-                    value = state.contactNumber,
-                    onValueChange = onContactNumberChange,
-                    label = { Text("Mobile No (Optional)") },
-                    leadingIcon = { Icon(Icons.Default.Phone, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
-                    placeholder = { Text("Omit if not needed") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                    modifier = Modifier.weight(1f),
-                    singleLine = true,
-                    shape = RoundedCornerShape(10.dp)
-                )
-
-                OutlinedTextField(
-                    value = state.monthlySalaryInput,
-                    onValueChange = onMonthlySalaryChange,
-                    label = { Text("Monthly Salary (৳) *") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.weight(1f).testTag("input_monthly_salary"),
-                    singleLine = true,
-                    shape = RoundedCornerShape(10.dp)
-                )
-            }
+            OutlinedTextField(
+                value = state.monthlySalaryInput,
+                onValueChange = onMonthlySalaryChange,
+                label = { Text("Monthly Salary (৳) *") },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("input_monthly_salary"),
+                singleLine = true,
+                shape = RoundedCornerShape(10.dp)
+            )
 
             Spacer(modifier = Modifier.height(8.dp))
 

@@ -214,7 +214,6 @@ fun AdvanceSalaryScreen(
                             onDateClick = { showDatePicker() },
                             onApplicantNameChange = { viewModel.updateApplicantName(it) },
                             onDesignationChange = { viewModel.updateDesignation(it) },
-                            onContactNumberChange = { viewModel.updateContactNumber(it) },
                             onMonthlySalaryChange = { viewModel.updateMonthlySalary(it) },
                             onAdvanceAmountChange = { viewModel.updateAdvanceAmount(it) },
                             onAdvanceAmountInWordsChange = { viewModel.updateAdvanceAmountInWords(it) },
