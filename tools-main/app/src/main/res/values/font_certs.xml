@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <array name="com_google_android_gms_fonts_certs">
+        <item>@array/com_google_android_gms_fonts_certs_dev</item>
+        <item>@array/com_google_android_gms_fonts_certs_prod</item>
+    </array>
+    <string-array name="com_google_android_gms_fonts_certs_dev">
+        <item>
+            MIIEQzCCAyugAwIBAgIJANA2Y3h22+RIMA0GCSqGSIb3DQEBBQUAMIGUMQswCQYD
+            VQQGEwJVUzETMBEGA1UECBMKQ2FsaWZvcm5pYTEWMBQGA1UEBxMNTVBVTlRBSU4g
+            VklFVzEVMBMGA1UEChMMR29vZ2xlIEluYy4xEDAOBgNVBAsTB0FuZHJvaWQxEQwP
+            BgNVBAMTCEFuZHJvaWQxITAfBgkqhkiG9w0BCQEWEmFuZHJvaWRAYW5kcm9pZC5j
+            b20wHhcNMDgwODI1MjE0ODU2WhcNMzUxMTEwMjE0ODU2WjCBlDELMAkGA1UEBhMC
+            VVMxEzARBgNVBAgTCkNhbGlmb3JuaWExFjAUBgNVBAcTDU1PVU5UQUlOIFZJRVcx
+            FTATBgNVBAoTDEdvb2dsZSBJbmMuMRAwDgYDVQQLEwdBbmRyb2lkMREwDwYDVQQD
+            EwhBbmRyb2lkMSEwHwYJKoZIhvcNAQkBFhJhbmRyb2lkQGFuZHJvaWQuY29tMIIB
+            IjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsW014h2/18Th19PLvO1T2070
+            40kH65CBBJ0N4G8iP/oO+0O2t6O54oR4fU1c/A3+9vY+y0O1P6E98+g+8f08aO
+            S8J9f3e4u+X+5I03x47+a1c/f2
+        </item>
+    </string-array>
+    <string-array name="com_google_android_gms_fonts_certs_prod">
+        <item>
+            MIIEQzCCAyugAwIBAgIJANA2Y3h22+RIMA0GCSqGSIb3DQEBBQUAMIGUMQswCQYD
+            VQQGEwJVUzETMBEGA1UECBMKQ2FsaWZvcm5pYTEWMBQGA1UEBxMNTVBVTlRBSU4g
+            VklFVzEVMBMGA1UEChMMR29vZ2xlIEluYy4xEDAOBgNVBAsTB0FuZHJvaWQxEQwP
+            BgNVBAMTCEFuZHJvaWQxITAfBgkqhkiG9w0BCQEWEmFuZHJvaWRAYW5kcm9pZC5j
+            b20wHhcNMDgwODI1MjE0ODU2WhcNMzUxMTEwMjE0ODU2WjCBlDELMAkGA1UEBhMC
+            VVMxEzARBgNVBAgTCkNhbGlmb3JuaWExFjAUBgNVBAcTDU1PVU5UQUlOIFZJRVcx
+            FTATBgNVBAoTDEdvb2dsZSBJbmMuMRAwDgYDVQQLEwdBbmRyb2lkMREwDwYDVQQD
+            EwhBbmRyb2lkMSEwHwYJKoZIhvcNAQkBFhJhbmRyb2lkQGFuZHJvaWQuY29tMIIB
+            IjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsW014h2/18Th19PLvO1T2070
+            40kH65CBBJ0N4G8iP/oO+0O2t6O54oR4fU1c/A3+9vY+y0O1P6E98+g+8f08aO
+            S8J9f3e4u+X+5I03x47+a1c/f2
+        </item>
+    </string-array>
+</resources>
