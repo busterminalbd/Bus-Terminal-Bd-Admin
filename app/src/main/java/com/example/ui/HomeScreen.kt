@@ -77,6 +77,7 @@ import com.example.ui.components.MemoVoucherCard
 import com.example.ui.components.OnboardingDialog
 import com.example.ui.components.QuickPresetChips
 import com.example.ui.components.SettingsScreen
+import com.example.ui.components.ToolTopAppBar
 import com.example.ui.components.ToolsHubScreen
 import com.example.ui.components.VoucherPreviewDialog
 import com.example.ui.theme.DarkForestGreen
@@ -274,7 +275,7 @@ fun HomeScreen(
             } else {
             Scaffold(
                 topBar = {
-                    TopAppBar(
+                    ToolTopAppBar(
                         title = {
                             val billTypeLabel = if (currentBillState.billType == "transport") {
                                 if (isEn) "Transport Fare" else "যাতায়াত ভাড়া"
@@ -392,47 +393,13 @@ fun HomeScreen(
                                 }
                             }
                         },
-                        navigationIcon = {
-                            if (showGlobalSettings || showMemoSettings) {
-                                IconButton(onClick = {
-                                    if (showMemoSettings) {
-                                        showMemoSettings = false
-                                    } else {
-                                        showGlobalSettings = false
-                                    }
-                                }) {
-                                    Icon(
-                                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                        contentDescription = "ফিরে যান",
-                                        tint = Color.White
-                                    )
-                                }
-                            } else if (selectedTool != null) {
-                                IconButton(onClick = { selectedTool = null }) {
-                                    Icon(
-                                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                        contentDescription = "ফিরে যান",
-                                        tint = Color.White
-                                    )
-                                }
-                            }
+                        onNavigateBack = when {
+                            showMemoSettings -> { { showMemoSettings = false } }
+                            showGlobalSettings -> { { showGlobalSettings = false } }
+                            selectedTool != null -> { { selectedTool = null } }
+                            else -> null
                         },
-                        actions = {
-                            IconButton(
-                                onClick = { showGlobalSettings = true },
-                                modifier = Modifier.testTag("global_settings_button")
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Settings,
-                                    contentDescription = "মেইন অ্যাপ সেটিংস",
-                                    tint = Color.White
-                                )
-                            }
-                        },
-                        colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            titleContentColor = Color.White
-                        )
+                        onOpenGlobalSettings = { showGlobalSettings = true }
                     )
                 },
                 bottomBar = {

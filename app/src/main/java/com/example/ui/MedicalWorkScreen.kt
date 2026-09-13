@@ -107,6 +107,7 @@ import com.example.ui.theme.DarkForestGreen
 import com.example.ui.theme.HeadingFontFamily
 import com.example.util.BengaliUtils
 import com.example.ui.components.DateNavigatorBar
+import com.example.ui.components.ToolTopAppBar
 import com.example.util.MedicalPrintUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
@@ -207,7 +208,7 @@ fun MedicalWorkScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
+            ToolTopAppBar(
                 title = {
                     Text(
                         text = "মেডিকেল ওয়ার্ক রিপোর্ট",
@@ -217,21 +218,14 @@ fun MedicalWorkScreen(
                         color = Color.White
                     )
                 },
-                navigationIcon = {
-                    IconButton(
-                        onClick = onNavigateBack,
-                        modifier = Modifier.testTag("medical_work_back_button")
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "ফিরে যান",
-                            tint = Color.White
-                        )
-                    }
-                },
-                actions = {
+                onNavigateBack = onNavigateBack,
+                onOpenGlobalSettings = onOpenGlobalSettings,
+                extraActions = {
                     Box {
-                        IconButton(onClick = { showTopMenu = true }) {
+                        IconButton(
+                            onClick = { showTopMenu = true },
+                            modifier = Modifier.testTag("medical_work_menu_button")
+                        ) {
                             Icon(Icons.Default.MoreVert, contentDescription = "মেনু", tint = Color.White)
                         }
                         DropdownMenu(
@@ -293,23 +287,7 @@ fun MedicalWorkScreen(
                             }
                         }
                     }
-                    // Same global-settings icon every tool header ends with —
-                    // there's no separate per-tool settings screen.
-                    IconButton(
-                        onClick = onOpenGlobalSettings,
-                        modifier = Modifier.testTag("medical_work_global_settings_button")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Settings,
-                            contentDescription = "মেইন অ্যাপ সেটিংস",
-                            tint = Color.White
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = Color.White
-                )
+                }
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },

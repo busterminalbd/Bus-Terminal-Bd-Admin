@@ -57,6 +57,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.ui.components.ToolTopAppBar
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.ui.components.AdvanceSalaryFormCard
 import com.example.ui.components.AdvanceSalaryHistoryList
@@ -110,7 +111,7 @@ fun AdvanceSalaryScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
+            ToolTopAppBar(
                 title = {
                     Column {
                         Text(
@@ -129,16 +130,9 @@ fun AdvanceSalaryScreen(
                         }
                     }
                 },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back to Tools Hub",
-                            tint = Color.White
-                        )
-                    }
-                },
-                actions = {
+                onNavigateBack = onNavigateBack,
+                onOpenGlobalSettings = onOpenGlobalSettings,
+                extraActions = {
                     if (selectedTab == 0) {
                         IconButton(
                             onClick = { viewModel.resetForm() },
@@ -151,21 +145,7 @@ fun AdvanceSalaryScreen(
                             )
                         }
                     }
-                    IconButton(
-                        onClick = onOpenGlobalSettings,
-                        modifier = Modifier.testTag("advance_salary_global_settings_button")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Settings,
-                            contentDescription = "মেইন অ্যাপ সেটিংস",
-                            tint = Color.White
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = Color.White
-                )
+                }
             )
         },
         bottomBar = {
