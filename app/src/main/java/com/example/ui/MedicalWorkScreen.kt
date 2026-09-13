@@ -49,6 +49,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Print
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Style
 import androidx.compose.material3.AlertDialog
@@ -292,9 +293,21 @@ fun MedicalWorkScreen(
                             }
                         }
                     }
+                    // Same global-settings icon every tool header ends with —
+                    // there's no separate per-tool settings screen.
+                    IconButton(
+                        onClick = onOpenGlobalSettings,
+                        modifier = Modifier.testTag("medical_work_global_settings_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "মেইন অ্যাপ সেটিংস",
+                            tint = Color.White
+                        )
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = DarkForestGreen,
+                    containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = Color.White
                 )
             )
@@ -327,7 +340,7 @@ fun MedicalWorkScreen(
                     onPreviousDay = { viewModel.shiftDate(-1) },
                     onNextDay = { viewModel.shiftDate(1) },
                     onPickDate = openDatePicker,
-                    trailingContent = {
+                    centerContent = {
                         Text(
                             text = "মোট: ${BengaliUtils.toBengaliDigits(records.size.toString())} টি এন্ট্রি",
                             fontSize = 12.sp,

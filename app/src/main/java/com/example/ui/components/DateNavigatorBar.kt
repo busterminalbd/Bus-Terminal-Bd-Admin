@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -43,7 +44,7 @@ fun DateNavigatorBar(
     onNextDay: () -> Unit,
     onPickDate: () -> Unit,
     modifier: Modifier = Modifier,
-    trailingContent: (@Composable () -> Unit)? = null
+    centerContent: (@Composable () -> Unit)? = null
 ) {
     val parts = selectedDateIso.split("-")
     val dayNumber = parts.getOrNull(2) ?: "--"
@@ -53,12 +54,22 @@ fun DateNavigatorBar(
         "জুলাই", "আগস্ট", "সেপ্ট", "অক্টো", "নভে", "ডিসে"
     ).getOrElse(monthIndex - 1) { "" }
 
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(44.dp)
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        if (centerContent != null) {
+            Box(modifier = Modifier.align(Alignment.Center)) {
+                centerContent()
+            }
+        }
+
+        // Nav group (previous / calendar-with-date / next) — pinned to the right.
+        Row(
+            modifier = Modifier.align(Alignment.CenterEnd),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             IconButton(onClick = onPreviousDay, modifier = Modifier.size(36.dp)) {
                 Icon(
                     imageVector = Icons.Default.KeyboardArrowLeft,
@@ -106,7 +117,5 @@ fun DateNavigatorBar(
                 )
             }
         }
-
-        trailingContent?.invoke()
     }
 }
