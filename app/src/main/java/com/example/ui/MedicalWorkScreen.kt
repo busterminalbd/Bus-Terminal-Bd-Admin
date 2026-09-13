@@ -105,6 +105,7 @@ import com.example.data.PresetMedicalCodeEntity
 import com.example.ui.theme.DarkForestGreen
 import com.example.ui.theme.HeadingFontFamily
 import com.example.util.BengaliUtils
+import com.example.ui.components.DateNavigatorBar
 import com.example.util.MedicalPrintUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
@@ -207,21 +208,13 @@ fun MedicalWorkScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Column {
-                        Text(
-                            text = "মেডিকেল ওয়ার্ক রিপোর্ট",
-                            fontFamily = HeadingFontFamily,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 18.sp,
-                            color = Color.White
-                        )
-                        val formattedShort = MedicalPrintUtils.formatDateShort(selectedDate)
-                        Text(
-                            text = "তারিখ: $formattedShort (মোট: ${BengaliUtils.toBengaliDigits(records.size.toString())} টি)",
-                            fontSize = 12.sp,
-                            color = Color.White.copy(alpha = 0.85f)
-                        )
-                    }
+                    Text(
+                        text = "মেডিকেল ওয়ার্ক রিপোর্ট",
+                        fontFamily = HeadingFontFamily,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        color = Color.White
+                    )
                 },
                 navigationIcon = {
                     IconButton(
@@ -236,57 +229,6 @@ fun MedicalWorkScreen(
                     }
                 },
                 actions = {
-                    // Quick day switcher
-                    IconButton(
-                        onClick = { viewModel.shiftDate(-1) },
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        Icon(Icons.Default.KeyboardArrowLeft, contentDescription = "পূর্ববর্তী দিন", tint = Color.White)
-                    }
-                    IconButton(
-                        onClick = openDatePicker,
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        Icon(Icons.Default.CalendarToday, contentDescription = "তারিখ নির্বাচন", tint = Color.White)
-                    }
-                    IconButton(
-                        onClick = { viewModel.shiftDate(1) },
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        Icon(Icons.Default.KeyboardArrowRight, contentDescription = "পরবর্তী দিন", tint = Color.White)
-                    }
-
-                    // Print / Share actions
-                    IconButton(
-                        onClick = {
-                            if (records.isEmpty()) {
-                                coroutineScope.launch {
-                                    snackbarHostState.showSnackbar("প্রিন্ট করার জন্য কোনো রেকর্ড নেই")
-                                }
-                            } else {
-                                MedicalPrintUtils.printDailyReport(context, selectedDate, records)
-                            }
-                        },
-                        modifier = Modifier.testTag("medical_print_top_button")
-                    ) {
-                        Icon(Icons.Default.Print, contentDescription = "প্রিন্ট করুন", tint = Color.White)
-                    }
-
-                    IconButton(
-                        onClick = {
-                            if (records.isEmpty()) {
-                                coroutineScope.launch {
-                                    snackbarHostState.showSnackbar("শেয়ার করার জন্য কোনো রেকর্ড নেই")
-                                }
-                            } else {
-                                MedicalPrintUtils.shareDailyReportAsImage(context, selectedDate, records)
-                            }
-                        },
-                        modifier = Modifier.testTag("medical_share_top_button")
-                    ) {
-                        Icon(Icons.Default.Share, contentDescription = "ছবি শেয়ার করুন", tint = Color.White)
-                    }
-
                     Box {
                         IconButton(onClick = { showTopMenu = true }) {
                             Icon(Icons.Default.MoreVert, contentDescription = "মেনু", tint = Color.White)
@@ -295,20 +237,6 @@ fun MedicalWorkScreen(
                             expanded = showTopMenu,
                             onDismissRequest = { showTopMenu = false }
                         ) {
-                            DropdownMenuItem(
-                                text = { Text("🖼️ ছবি শেয়ার (Image)") },
-                                onClick = {
-                                    showTopMenu = false
-                                    MedicalPrintUtils.shareDailyReportAsImage(context, selectedDate, records)
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("📄 PDF শেয়ার (Document)") },
-                                onClick = {
-                                    showTopMenu = false
-                                    MedicalPrintUtils.shareDailyReportAsPdf(context, selectedDate, records)
-                                }
-                            )
                             DropdownMenuItem(
                                 text = { Text("📋 টেক্সট কপি করুন") },
                                 onClick = {
@@ -392,6 +320,24 @@ fun MedicalWorkScreen(
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
+            // 0. Date navigator — below header, above the entry form.
+            item {
+                DateNavigatorBar(
+                    selectedDateIso = selectedDate,
+                    onPreviousDay = { viewModel.shiftDate(-1) },
+                    onNextDay = { viewModel.shiftDate(1) },
+                    onPickDate = openDatePicker,
+                    trailingContent = {
+                        Text(
+                            text = "মোট: ${BengaliUtils.toBengaliDigits(records.size.toString())} টি এন্ট্রি",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                )
+            }
+
             // 1. Fast Add Form Card
             item {
                 Card(
@@ -413,12 +359,6 @@ fun MedicalWorkScreen(
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 14.sp,
                                 color = MaterialTheme.colorScheme.primary
-                            )
-                            Text(
-                                text = "তারিখ: ${MedicalPrintUtils.formatDateShort(selectedDate)}",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
 

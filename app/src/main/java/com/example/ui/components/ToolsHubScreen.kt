@@ -109,7 +109,7 @@ fun ToolsHubScreen(
             icon = Icons.Default.Assignment,
             isAvailable = true,
             badgeText = if (isEn) "Active" else "চালু আছে",
-            accentColor = Color(0xFF0D47A1)
+            accentColor = MaterialTheme.colorScheme.tertiary
         )
     )
 
