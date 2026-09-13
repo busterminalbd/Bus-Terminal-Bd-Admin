@@ -205,6 +205,40 @@ fun MedicalWorkScreen(
         }
     }
 
+    // Gallery image picker for the "AI ছবি" feature — lets the user pick an
+    // existing photo from their phone instead of only using the camera.
+    var showAiImageSourceMenu by remember { mutableStateOf(false) }
+    val pickGalleryImageLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            coroutineScope.launch {
+                try {
+                    val bytes = withContext(Dispatchers.IO) {
+                        context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                    }
+                    if (bytes != null) {
+                        viewModel.importFromImage(bytes)
+                    } else {
+                        snackbarHostState.showSnackbar("ছবিটি পড়তে সমস্যা হয়েছে")
+                    }
+                } catch (e: Exception) {
+                    snackbarHostState.showSnackbar("ছবি প্রসেস করতে সমস্যা হয়েছে: ${e.localizedMessage}")
+                }
+            }
+        }
+    }
+
+    fun launchAiGalleryPicker() {
+        if (!GeminiSettingsStore.hasApiKey(context)) {
+            coroutineScope.launch {
+                snackbarHostState.showSnackbar("প্রথমে Settings-এ গিয়ে আপনার Gemini API Key দিন")
+            }
+            return
+        }
+        pickGalleryImageLauncher.launch("image/*")
+    }
+
     val openJsonFileLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
@@ -758,24 +792,55 @@ fun MedicalWorkScreen(
                         Text("বাল্ক পেস্ট", fontSize = 12.sp)
                     }
 
-                    OutlinedButton(
-                        onClick = { launchAiCamera() },
-                        enabled = !isAiImporting,
-                        shape = RoundedCornerShape(8.dp),
-                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
-                        modifier = Modifier.testTag("btn_ai_camera")
-                    ) {
-                        if (isAiImporting) {
-                            androidx.compose.material3.CircularProgressIndicator(
-                                modifier = Modifier.size(14.dp),
-                                strokeWidth = 2.dp
+                    Box {
+                        OutlinedButton(
+                            onClick = { showAiImageSourceMenu = true },
+                            enabled = !isAiImporting,
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                            modifier = Modifier.testTag("btn_ai_camera")
+                        ) {
+                            if (isAiImporting) {
+                                androidx.compose.material3.CircularProgressIndicator(
+                                    modifier = Modifier.size(14.dp),
+                                    strokeWidth = 2.dp
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("AI বুঝছে...", fontSize = 12.sp)
+                            } else {
+                                Icon(Icons.Default.PhotoCamera, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("AI ছবি", fontSize = 12.sp)
+                                Icon(Icons.Default.ArrowDropDown, contentDescription = null, modifier = Modifier.size(16.dp))
+                            }
+                        }
+
+                        DropdownMenu(
+                            expanded = showAiImageSourceMenu,
+                            onDismissRequest = { showAiImageSourceMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("ক্যামেরা দিয়ে তুলুন") },
+                                leadingIcon = {
+                                    Icon(Icons.Default.PhotoCamera, contentDescription = null)
+                                },
+                                onClick = {
+                                    showAiImageSourceMenu = false
+                                    launchAiCamera()
+                                },
+                                modifier = Modifier.testTag("btn_ai_source_camera")
                             )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("AI বুঝছে...", fontSize = 12.sp)
-                        } else {
-                            Icon(Icons.Default.PhotoCamera, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("AI ছবি", fontSize = 12.sp)
+                            DropdownMenuItem(
+                                text = { Text("গ্যালারি থেকে বাছুন") },
+                                leadingIcon = {
+                                    Icon(Icons.Default.FileOpen, contentDescription = null)
+                                },
+                                onClick = {
+                                    showAiImageSourceMenu = false
+                                    launchAiGalleryPicker()
+                                },
+                                modifier = Modifier.testTag("btn_ai_source_gallery")
+                            )
                         }
                     }
 
