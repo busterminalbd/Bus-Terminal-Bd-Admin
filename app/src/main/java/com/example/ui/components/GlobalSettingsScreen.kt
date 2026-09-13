@@ -38,6 +38,9 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material.icons.filled.FolderZip
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Key
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.OpenInNew
@@ -64,8 +67,10 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Text
@@ -83,6 +88,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -93,6 +100,7 @@ import com.example.update.AppUpdateManager
 import com.example.update.UpdateDialog
 import com.example.update.UpdateInfo
 import com.example.util.BengaliUtils
+import com.example.util.GeminiSettingsStore
 import kotlinx.coroutines.launch
 
 @Composable
@@ -529,6 +537,106 @@ fun GlobalSettingsScreen(
                         }
                     }
                 }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        // AI ছবি থেকে ডেটা এন্ট্রি — প্রতিটি ব্যবহারকারী নিজের Gemini API Key দেবে
+        SettingsCard(
+            title = if (isEn) "AI Photo Data Entry (Gemini API Key)" else "AI ছবি থেকে ডেটা এন্ট্রি (Gemini API Key)",
+            icon = Icons.Default.Key
+        ) {
+            val context = LocalContext.current
+            var apiKeyField by remember { mutableStateOf(GeminiSettingsStore.getApiKey(context)) }
+            var isKeyVisible by remember { mutableStateOf(false) }
+            var savedMessage by remember { mutableStateOf<String?>(null) }
+            var usageToday by remember { mutableStateOf(GeminiSettingsStore.getUsageToday(context)) }
+
+            Text(
+                text = if (isEn)
+                    "Enter your own Gemini API key so the camera option in Medical Work Report can read a photo and auto-fill the data. Your key is saved only on this device."
+                else
+                    "নিজের Gemini API Key দিন — এটা দিলে Medical Work Report-এ ছবি তুলে অটো ডেটা এন্ট্রি করা যাবে। Key শুধু আপনার এই ফোনেই সংরক্ষিত থাকবে।",
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            OutlinedTextField(
+                value = apiKeyField,
+                onValueChange = { apiKeyField = it; savedMessage = null },
+                label = { Text(if (isEn) "Gemini API Key" else "Gemini API Key") },
+                singleLine = true,
+                visualTransformation = if (isKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                trailingIcon = {
+                    IconButton(onClick = { isKeyVisible = !isKeyVisible }) {
+                        Icon(
+                            imageVector = if (isKeyVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                            contentDescription = null
+                        )
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("input_gemini_api_key")
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Button(
+                    onClick = {
+                        GeminiSettingsStore.saveApiKey(context, apiKeyField)
+                        savedMessage = if (isEn) "Key saved" else "Key সংরক্ষিত হয়েছে"
+                    },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                ) {
+                    Text(if (isEn) "Save" else "সংরক্ষণ করুন", fontSize = 13.sp)
+                }
+
+                OutlinedButton(
+                    onClick = {
+                        GeminiSettingsStore.clearApiKey(context)
+                        apiKeyField = ""
+                        savedMessage = if (isEn) "Key removed" else "Key মুছে ফেলা হয়েছে"
+                    },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(if (isEn) "Remove" else "মুছে ফেলুন", fontSize = 13.sp)
+                }
+            }
+
+            savedMessage?.let {
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(text = "✓ $it", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+            Divider(color = MaterialTheme.colorScheme.outlineVariant)
+            Spacer(modifier = Modifier.height(10.dp))
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.Info,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = if (isEn)
+                        "Used today (this device): $usageToday / ~${GeminiSettingsStore.APPROX_DAILY_FREE_LIMIT} (approx. free-tier estimate, not a live balance from Google)"
+                    else
+                        "আজ ব্যবহৃত হয়েছে (এই ফোনে): $usageToday / আনুমানিক ${GeminiSettingsStore.APPROX_DAILY_FREE_LIMIT} (এটি Google-এর সরাসরি লাইভ ব্যালেন্স নয়, শুধুই আনুমানিক)",
+                    fontSize = 11.5.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
 

@@ -10,6 +10,8 @@ import com.example.data.MedicalRecordEntity
 import com.example.data.MedicalRepository
 import com.example.data.PresetMedicalCodeEntity
 import com.example.util.BengaliUtils
+import com.example.util.GeminiSettingsStore
+import com.example.util.GeminiVisionRepository
 import com.example.util.MedicalPrintUtils
 import org.json.JSONArray
 import org.json.JSONObject
@@ -33,6 +35,9 @@ class MedicalWorkViewModel(application: Application) : AndroidViewModel(applicat
     private val repository: MedicalRepository
     private val _uiEvent = MutableSharedFlow<String>()
     val uiEvent: SharedFlow<String> = _uiEvent.asSharedFlow()
+
+    private val _isAiImporting = MutableStateFlow(false)
+    val isAiImporting: StateFlow<Boolean> = _isAiImporting.asStateFlow()
 
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US)
 
@@ -294,6 +299,46 @@ class MedicalWorkViewModel(application: Application) : AndroidViewModel(applicat
 
             repository.saveRecords(recordsToAdd)
             _uiEvent.emit("$count টি সিরিয়াল এন্ট্রি সফলভাবে তৈরি হয়েছে")
+        }
+    }
+
+    /**
+     * Camera → AI data entry. Takes a photo's raw JPEG bytes, sends them to Gemini
+     * (using the user's own key from Settings) with a fixed, code-defined prompt,
+     * then feeds Gemini's JSON straight into the same import pipeline used for
+     * manual paste — the user never sees a prompt or JSON.
+     */
+    fun importFromImage(imageBytes: ByteArray) {
+        val context = getApplication<Application>().applicationContext
+        val apiKey = GeminiSettingsStore.getApiKey(context)
+
+        if (apiKey.isBlank()) {
+            viewModelScope.launch {
+                _uiEvent.emit("প্রথমে Settings-এ গিয়ে আপনার নিজের Gemini API Key দিন, তারপর ছবি তুলে ডেটা যোগ করা যাবে")
+            }
+            return
+        }
+
+        if (_isAiImporting.value) return
+
+        viewModelScope.launch {
+            _isAiImporting.value = true
+            try {
+                when (val result = GeminiVisionRepository.extractMedicalDataFromImage(apiKey, imageBytes)) {
+                    is GeminiVisionRepository.Result.Success -> {
+                        GeminiSettingsStore.recordUsage(context)
+                        val imported = tryParseAndImportJson(result.jsonText)
+                        if (!imported) {
+                            _uiEvent.emit("ছবি থেকে ডেটা বোঝা গেলেও ফরম্যাট মেলাতে সমস্যা হয়েছে, আবার চেষ্টা করুন")
+                        }
+                    }
+                    is GeminiVisionRepository.Result.Failure -> {
+                        _uiEvent.emit(result.message)
+                    }
+                }
+            } finally {
+                _isAiImporting.value = false
+            }
         }
     }
 

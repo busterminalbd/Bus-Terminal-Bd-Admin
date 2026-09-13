@@ -2,6 +2,9 @@ package com.example.ui
 
 import android.app.DatePickerDialog
 import android.net.Uri
+import androidx.core.content.FileProvider
+import com.example.util.GeminiSettingsStore
+import java.io.File
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -48,6 +51,7 @@ import androidx.compose.material.icons.filled.FormatListNumbered
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
@@ -131,6 +135,7 @@ fun MedicalWorkScreen(
     val records by viewModel.recordsForSelectedDate.collectAsStateWithLifecycle()
     val presetCodes by viewModel.presetCodes.collectAsStateWithLifecycle()
     val nextSuggestedId by viewModel.nextSuggestedPatientId.collectAsStateWithLifecycle()
+    val isAiImporting by viewModel.isAiImporting.collectAsStateWithLifecycle()
 
     // Form states
     var inputPatientId by remember { mutableStateOf("") }
@@ -156,6 +161,49 @@ fun MedicalWorkScreen(
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
     var editingRecord by remember { mutableStateOf<MedicalRecordEntity?>(null) }
     var showTopMenu by remember { mutableStateOf(false) }
+
+    var pendingCameraImageUri by remember { mutableStateOf<Uri?>(null) }
+    val takePictureLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success: Boolean ->
+        val uri = pendingCameraImageUri
+        if (success && uri != null) {
+            coroutineScope.launch {
+                try {
+                    val bytes = withContext(Dispatchers.IO) {
+                        context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                    }
+                    if (bytes != null) {
+                        viewModel.importFromImage(bytes)
+                    } else {
+                        snackbarHostState.showSnackbar("ছবিটি পড়তে সমস্যা হয়েছে")
+                    }
+                } catch (e: Exception) {
+                    snackbarHostState.showSnackbar("ছবি প্রসেস করতে সমস্যা হয়েছে: ${e.localizedMessage}")
+                }
+            }
+        }
+    }
+
+    fun launchAiCamera() {
+        if (!GeminiSettingsStore.hasApiKey(context)) {
+            coroutineScope.launch {
+                snackbarHostState.showSnackbar("প্রথমে Settings-এ গিয়ে আপনার Gemini API Key দিন")
+            }
+            return
+        }
+        try {
+            val cacheDir = File(context.cacheDir, "ai_capture").apply { mkdirs() }
+            val photoFile = File(cacheDir, "capture_${System.currentTimeMillis()}.jpg")
+            val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", photoFile)
+            pendingCameraImageUri = uri
+            takePictureLauncher.launch(uri)
+        } catch (e: Exception) {
+            coroutineScope.launch {
+                snackbarHostState.showSnackbar("ক্যামেরা চালু করতে সমস্যা হয়েছে: ${e.localizedMessage}")
+            }
+        }
+    }
 
     val openJsonFileLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -708,6 +756,27 @@ fun MedicalWorkScreen(
                         Icon(Icons.Default.ContentPaste, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("বাল্ক পেস্ট", fontSize = 12.sp)
+                    }
+
+                    OutlinedButton(
+                        onClick = { launchAiCamera() },
+                        enabled = !isAiImporting,
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                        modifier = Modifier.testTag("btn_ai_camera")
+                    ) {
+                        if (isAiImporting) {
+                            androidx.compose.material3.CircularProgressIndicator(
+                                modifier = Modifier.size(14.dp),
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("AI বুঝছে...", fontSize = 12.sp)
+                        } else {
+                            Icon(Icons.Default.PhotoCamera, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("AI ছবি", fontSize = 12.sp)
+                        }
                     }
 
                     OutlinedButton(
