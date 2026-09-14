@@ -52,4 +52,7 @@ val StatusCancelled = Color(0xFFDC2626)
 val StatusCancelledBg = Color(0xFFFEE2E2)
 val StatusCompleted = Color(0xFF2563EB)
 val StatusCompletedBg = Color(0xFFDBEAFE)
+// Compatibility aliases required by UpdateDialog
+val DarkForestGreen = PrimaryEmerald
+val MaroonHeaderColor = DarkPrimaryEmerald
 
