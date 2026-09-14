@@ -48,7 +48,7 @@ fun AppNavigation(appContainer: AppContainer) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    val showBottomBar = isLoggedIn && currentRoute in BottomNavScreens.map { it.route }
+    val showBottomBar = isLoggedIn
 
     if (!isLoggedIn) {
         LoginScreen(
