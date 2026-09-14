@@ -70,14 +70,17 @@ fun AppNavigation(appContainer: AppContainer) {
                             NavigationBarItem(
                                 selected = isSelected,
                                 onClick = {
-                                    if (currentRoute != screen.route) {
-                                        navController.navigate(screen.route) {
-                                            popUpTo(navController.graph.findStartDestination().id) {
-                                                saveState = true
-                                            }
-                                            launchSingleTop = true
-                                            restoreState = true
+                                    // Bottom-nav items are true section HOME buttons.
+                                    // Every tap must return to that section's root screen,
+                                    // even when the user is several screens deep. We always
+                                    // clear the current section stack back to the graph start
+                                    // and do NOT restore a previously saved nested state.
+                                    navController.navigate(screen.route) {
+                                        popUpTo(navController.graph.findStartDestination().id) {
+                                            saveState = false
                                         }
+                                        launchSingleTop = true
+                                        restoreState = false
                                     }
                                 },
                                 icon = {
