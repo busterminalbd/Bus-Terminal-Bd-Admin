@@ -1,16 +1,11 @@
 package com.example.ui.navigation
 
-import android.content.res.Configuration
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -32,8 +27,8 @@ import com.example.ui.screens.minicoaches.MiniCoachesScreen
 import com.example.ui.screens.operators.OperatorsScreen
 import com.example.ui.screens.routes.RoutesScreen
 import com.example.ui.screens.schedules.SchedulesScreen
-import com.example.ui.screens.settings.SettingsScreen
 import com.example.ui.screens.tours.TourPackagesScreen
+import com.example.ui.screens.settings.SettingsScreen
 
 @Composable
 fun AppNavigation(appContainer: AppContainer) {
@@ -53,47 +48,38 @@ fun AppNavigation(appContainer: AppContainer) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    // On phones/tablets use the bottom navigation on every logged-in screen so
-    // submodules opened from Dashboard/Settings never hide the main navigation.
-    // On large screens use a direct, always-visible header menu instead.
-    val isLargeScreen =
-        LocalConfiguration.current.screenWidthDp >= 600
-
-    val navigateFromMainMenu: (String) -> Unit = { route ->
-        if (currentRoute != route) {
-            navController.navigate(route) {
-                popUpTo(navController.graph.findStartDestination().id) {
-                    saveState = true
-                }
-                launchSingleTop = true
-                restoreState = true
-            }
-        }
-    }
+    val showBottomBar = isLoggedIn && currentRoute in BottomNavScreens.map { it.route }
 
     if (!isLoggedIn) {
         LoginScreen(
             adminRepository = appContainer.adminRepository,
+            // isLoggedIn flipping to true (from sessionManager) already swaps this whole
+            // branch out for the Scaffold+NavHost below, whose NavHost starts at
+            // Screen.Dashboard.route. Calling navController.navigate() here would crash,
+            // because at this point (still in the LoginScreen branch) that NavHost hasn't
+            // been composed yet, so its graph isn't set.
             onLoginSuccess = {}
         )
     } else {
         Scaffold(
-            topBar = {
-                if (isLargeScreen) {
-                    LargeScreenHeader(
-                        currentRoute = currentRoute,
-                        onNavigate = navigateFromMainMenu
-                    )
-                }
-            },
             bottomBar = {
-                if (!isLargeScreen) {
+                AnimatedVisibility(visible = showBottomBar) {
                     NavigationBar {
                         BottomNavScreens.forEach { screen ->
                             val isSelected = currentRoute == screen.route
                             NavigationBarItem(
                                 selected = isSelected,
-                                onClick = { navigateFromMainMenu(screen.route) },
+                                onClick = {
+                                    if (currentRoute != screen.route) {
+                                        navController.navigate(screen.route) {
+                                            popUpTo(navController.graph.findStartDestination().id) {
+                                                saveState = true
+                                            }
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
+                                    }
+                                },
                                 icon = {
                                     Icon(
                                         imageVector = if (isSelected) screen.selectedIcon else screen.icon,
@@ -122,6 +108,7 @@ fun AppNavigation(appContainer: AppContainer) {
                 startDestination = Screen.Dashboard.route,
                 modifier = Modifier.padding(innerPadding)
             ) {
+                // Bottom Bar Screens
                 composable(Screen.Dashboard.route) {
                     DashboardScreen(
                         dashboardRepository = appContainer.dashboardRepository,
@@ -170,6 +157,7 @@ fun AppNavigation(appContainer: AppContainer) {
                     )
                 }
 
+                // Submodule Screens
                 composable(Screen.Operators.route) {
                     OperatorsScreen(
                         operatorRepository = appContainer.operatorRepository,
@@ -239,60 +227,3 @@ fun AppNavigation(appContainer: AppContainer) {
         }
     }
 }
-
-@Composable
-private fun LargeScreenHeader(
-    currentRoute: String?,
-    onNavigate: (String) -> Unit
-) {
-    Surface(
-        tonalElevation = 2.dp,
-        shadowElevation = 2.dp
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(64.dp)
-                .horizontalScroll(rememberScrollState())
-                .padding(horizontal = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            MainMenuScreens.forEach { screen ->
-                val selected = currentRoute == screen.route
-
-                TextButton(
-                    onClick = { onNavigate(screen.route) },
-                    modifier = Modifier.padding(horizontal = 2.dp)
-                ) {
-                    Icon(
-                        imageVector = if (selected) screen.selectedIcon else screen.icon,
-                        contentDescription = screen.titleBn,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = screen.titleBn,
-                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                        maxLines = 1
-                    )
-                }
-            }
-        }
-    }
-}
-
-private val MainMenuScreens = listOf(
-    Screen.Dashboard,
-    Screen.Bookings,
-    Screen.Buses,
-    Screen.Counters,
-    Screen.Settings,
-    Screen.Operators,
-    Screen.Routes,
-    Screen.Schedules,
-    Screen.Fares,
-    Screen.MiniCoaches,
-    Screen.TourPackages,
-    Screen.Districts,
-    Screen.Admins
-)
