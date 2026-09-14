@@ -22,6 +22,6 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "Digital Tool"
+rootProject.name = "Bus Terminal BD Admin"
 
 include(":app")

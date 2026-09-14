@@ -2,181 +2,54 @@ package com.example.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// ==============================
-// 🎨 MODERN COLOR SYSTEM & THEMES
-// ==============================
+// Brand Primary (Emerald Green)
+val EmeraldPrimary = Color(0xFF006C4C)
+val EmeraldOnPrimary = Color(0xFFFFFFFF)
+val EmeraldPrimaryContainer = Color(0xFF8CF8C7)
+val EmeraldOnPrimaryContainer = Color(0xFF002114)
 
-data class AppThemePalette(
-    val id: String,
-    val nameEn: String,
-    val nameBn: String,
-    val primary: Color,
-    val darkPrimary: Color,
-    val accent: Color,
-    val container: Color,
-    val onContainer: Color,
-    val darkPrimaryAccent: Color,
-    val previewGradient: List<Color>
-)
+// Brand Secondary (Teal Slate)
+val TealSecondary = Color(0xFF4C6358)
+val TealOnSecondary = Color(0xFFFFFFFF)
+val TealSecondaryContainer = Color(0xFFCEE9DA)
+val TealOnSecondaryContainer = Color(0xFF082017)
 
-// Pre-defined Theme Color Palettes
-val ThemePalettes = listOf(
-    AppThemePalette(
-        id = "emerald",
-        nameEn = "Emerald Forest",
-        nameBn = "পান্না সবুজ",
-        primary = Color(0xFF0F766E), // Deep Emerald / Teal 700
-        darkPrimary = Color(0xFF134E4A),
-        accent = Color(0xFF14B8A6),
-        container = Color(0xFFCCFBF1),
-        onContainer = Color(0xFF0F766E),
-        darkPrimaryAccent = Color(0xFF2DD4BF),
-        previewGradient = listOf(Color(0xFF134E4A), Color(0xFF0F766E), Color(0xFF14B8A6))
-    ),
-    AppThemePalette(
-        id = "indigo",
-        nameEn = "Deep Indigo",
-        nameBn = "ডিপ ইন্ডিগো",
-        primary = Color(0xFF4F46E5), // Indigo 600
-        darkPrimary = Color(0xFF3730A3),
-        accent = Color(0xFF818CF8),
-        container = Color(0xFFE0E7FF),
-        onContainer = Color(0xFF3730A3),
-        darkPrimaryAccent = Color(0xFF818CF8),
-        previewGradient = listOf(Color(0xFF3730A3), Color(0xFF4F46E5), Color(0xFF818CF8))
-    ),
-    AppThemePalette(
-        id = "cobalt",
-        nameEn = "Royal Cobalt",
-        nameBn = "রয়্যাল ব্লু",
-        primary = Color(0xFF2563EB), // Blue 600
-        darkPrimary = Color(0xFF1D4ED8),
-        accent = Color(0xFF38BDF8),
-        container = Color(0xFFDBEAFE),
-        onContainer = Color(0xFF1E40AF),
-        darkPrimaryAccent = Color(0xFF60A5FA),
-        previewGradient = listOf(Color(0xFF1D4ED8), Color(0xFF2563EB), Color(0xFF38BDF8))
-    ),
-    AppThemePalette(
-        id = "violet",
-        nameEn = "Royal Violet",
-        nameBn = "রাজকীয় ভায়োলেট",
-        primary = Color(0xFF7C3AED), // Violet 600
-        darkPrimary = Color(0xFF5B21B6),
-        accent = Color(0xFFA78BFA),
-        container = Color(0xFFEDE9FE),
-        onContainer = Color(0xFF5B21B6),
-        darkPrimaryAccent = Color(0xFFA78BFA),
-        previewGradient = listOf(Color(0xFF5B21B6), Color(0xFF7C3AED), Color(0xFFA78BFA))
-    ),
-    AppThemePalette(
-        id = "rose",
-        nameEn = "Ruby Crimson",
-        nameBn = "রুবি লাল",
-        primary = Color(0xFFE11D48), // Rose 600
-        darkPrimary = Color(0xFF9F1239),
-        accent = Color(0xFFFB7185),
-        container = Color(0xFFFFE4E6),
-        onContainer = Color(0xFF9F1239),
-        darkPrimaryAccent = Color(0xFFFB7185),
-        previewGradient = listOf(Color(0xFF9F1239), Color(0xFFE11D48), Color(0xFFFB7185))
-    ),
-    AppThemePalette(
-        id = "amber",
-        nameEn = "Sunset Amber",
-        nameBn = "সানসেট গোল্ড",
-        primary = Color(0xFFD97706), // Amber 600
-        darkPrimary = Color(0xFF92400E),
-        accent = Color(0xFFFBBF24),
-        container = Color(0xFFFEF3C7),
-        onContainer = Color(0xFF92400E),
-        darkPrimaryAccent = Color(0xFFFBBF24),
-        previewGradient = listOf(Color(0xFF92400E), Color(0xFFD97706), Color(0xFFFBBF24))
-    ),
-    AppThemePalette(
-        id = "classic_vintage",
-        nameEn = "Classic Vintage",
-        nameBn = "ক্ল্যাসিক ভিন্টেজ (প্রিমিয়াম)",
-        primary = Color(0xFF1E3A2F), // Deep vintage forest green
-        darkPrimary = Color(0xFF11221B),
-        accent = Color(0xFFB8860B), // Dark Goldenrod
-        container = Color(0xFFE8ECE9),
-        onContainer = Color(0xFF1E3A2F),
-        darkPrimaryAccent = Color(0xFFD4AF37),
-        previewGradient = listOf(Color(0xFF11221B), Color(0xFF1E3A2F), Color(0xFFD4AF37))
-    ),
-    AppThemePalette(
-        id = "onyx_gold",
-        nameEn = "Onyx & Gold",
-        nameBn = "অনিল ও গোল্ড (লাক্সারি)",
-        primary = Color(0xFF1F2421), // Luxurious Onyx Slate
-        darkPrimary = Color(0xFF141715),
-        accent = Color(0xFFC5A059), // Rich Champagne Gold
-        container = Color(0xFFF4F1EA),
-        onContainer = Color(0xFF1F2421),
-        darkPrimaryAccent = Color(0xFFE5C158),
-        previewGradient = listOf(Color(0xFF141715), Color(0xFF262D2A), Color(0xFFC5A059))
-    )
-)
+// Brand Tertiary (Warm Transit Amber)
+val AmberTertiary = Color(0xFF7A5900)
+val AmberOnTertiary = Color(0xFFFFFFFF)
+val AmberTertiaryContainer = Color(0xFFFFDEA1)
+val AmberOnTertiaryContainer = Color(0xFF261900)
 
-fun getThemePalette(id: String): AppThemePalette {
-    return ThemePalettes.find { it.id == id } ?: ThemePalettes.first()
-}
+// Neutral & Surfaces Light
+val BgLight = Color(0xFFF6FAF6)
+val SurfaceLight = Color(0xFFFFFFFF)
+val SurfaceVariantLight = Color(0xFFDCE5DD)
+val OutlineLight = Color(0xFF717972)
 
-// Default Modern Emerald Palette values
-val PrimaryEmerald = Color(0xFF0F766E)
-val DarkPrimaryEmerald = Color(0xFF134E4A)
-val MintAccent = Color(0xFF14B8A6)
-val LightMintBg = Color(0xFFF0FDFA)
+// Dark Palette (near-black background with a vivid teal/turquoise accent)
+val EmeraldPrimaryDark = Color(0xFF2DD4BF)
+val EmeraldOnPrimaryDark = Color(0xFF00332C)
+val EmeraldPrimaryContainerDark = Color(0xFF0F3D38)
+val EmeraldOnPrimaryContainerDark = Color(0xFF7FF5E6)
 
-// Neutral Palette (Clean Modern Slate)
-val MainBackground = Color(0xFFF8FAFC)
-val SurfaceCard = Color(0xFFFFFFFF)
-val TextPrimary = Color(0xFF0F172A)
-val TextSecondary = Color(0xFF475569)
-val TextPlaceholder = Color(0xFF94A3B8)
-val BorderColor = Color(0xFFE2E8F0)
-val DividerColor = Color(0xFFF1F5F9)
+val TealSecondaryDark = Color(0xFF7FE0D2)
+val TealOnSecondaryDark = Color(0xFF0A342E)
 
-// Semantic State Palette
-val SuccessGreen = Color(0xFF16A34A)
-val SuccessBg = Color(0xFFDCFCE7)
-val ErrorRed = Color(0xFFDC2626)
-val ErrorBg = Color(0xFFFEE2E2)
-val WarningOrange = Color(0xFFEA580C)
-val WarningBg = Color(0xFFFFEDD5)
+val AmberTertiaryDark = Color(0xFFF6BE48)
+val AmberOnTertiaryDark = Color(0xFF402D00)
 
-// Dark Mode Neutral Palette (Sleek Dark Slate)
-val DarkMainBackground = Color(0xFF0B0F19)
-val DarkSurfaceCard = Color(0xFF111827)
-val DarkElevatedSurface = Color(0xFF1F2937)
-val DarkTextPrimary = Color(0xFFF8FAFC)
-val DarkTextSecondary = Color(0xFF94A3B8)
-val DarkBorderColor = Color(0xFF374151)
-val DarkSuccessGreen = Color(0xFF4ADE80)
-val DarkErrorRed = Color(0xFFF87171)
-val DarkWarningOrange = Color(0xFFFB923C)
+val BgDark = Color(0xFF0B0F14)
+val SurfaceDark = Color(0xFF121821)
+val SurfaceVariantDark = Color(0xFF1E2730)
+val OutlineDark = Color(0xFF465059)
 
-// Backward Compatibility Aliases
-val PrimaryBlue = PrimaryEmerald
-val DarkPrimaryBlue = DarkPrimaryEmerald
-val SkyBlueAccent = MintAccent
-val LightBlueBg = LightMintBg
-val DarkModePrimaryBlue = Color(0xFF2DD4BF)
-val DarkAccentBlue = MintAccent
-
-val DarkForestGreen = PrimaryEmerald
-val LightForestGreen = DarkPrimaryEmerald
-val ForestGreenText = TextPrimary
-
-val CreamPaperBg = SurfaceCard
-val WarmBorderColor = BorderColor
-
-val BrassAccent = MintAccent
-val StampBlue = PrimaryEmerald
-val StampBlueDark = DarkPrimaryEmerald
-val LedgerRed = ErrorRed
-
-val MaroonHeaderColor = DarkPrimaryEmerald
-val MaroonTextColor = PrimaryEmerald
+// Status Badges
+val StatusPending = Color(0xFFD97706)
+val StatusPendingBg = Color(0xFFFEF3C7)
+val StatusConfirmed = Color(0xFF059669)
+val StatusConfirmedBg = Color(0xFFD1FAE5)
+val StatusCancelled = Color(0xFFDC2626)
+val StatusCancelledBg = Color(0xFFFEE2E2)
+val StatusCompleted = Color(0xFF2563EB)
+val StatusCompletedBg = Color(0xFFDBEAFE)
 
