@@ -1,6 +1,0 @@
-{
-  "name": "Digital Tool",
-  "description": "Digital Tool - Food Bill Memo, Advance Salary & Utility Tools",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}
