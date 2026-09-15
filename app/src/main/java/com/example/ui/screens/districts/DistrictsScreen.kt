@@ -181,7 +181,12 @@ fun DistrictsScreen(
         val current = editingDistrict ?: District()
         var name by remember { mutableStateOf(current.name) }
         var division by remember { mutableStateOf(current.division) }
-        var slug by remember { mutableStateOf(current.slug) }
+        var slug by remember {
+            mutableStateOf(
+                if (editingDistrict != null) current.slug
+                else name.lowercase().trim().replace(Regex("\\s+"), "-")
+            )
+        }
         var active by remember { mutableStateOf(current.active) }
 
         AlertDialog(
@@ -196,8 +201,8 @@ fun DistrictsScreen(
                         value = name,
                         onValueChange = {
                             name = it
-                            if (slug.isBlank() || slug == current.slug) {
-                                slug = it.lowercase().trim().replace(" ", "-")
+                            if (editingDistrict == null) {
+                                slug = it.lowercase().trim().replace(Regex("\\s+"), "-")
                             }
                         },
                         label = { Text("জেলার নাম *") },
@@ -213,8 +218,10 @@ fun DistrictsScreen(
                     )
                     OutlinedTextField(
                         value = slug,
-                        onValueChange = { slug = it },
-                        label = { Text("স্লাগ (URL Slug) *") },
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("স্লাগ (URL Slug)" ) },
+                        supportingText = { Text("প্রথমবার সংরক্ষণ করার সময় স্বয়ংক্রিয়ভাবে তৈরি হবে এবং পরে পরিবর্তন হবে না") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -236,7 +243,7 @@ fun DistrictsScreen(
                                 val toSave = current.copy(
                                     name = name.trim(),
                                     division = division.trim(),
-                                    slug = slug.trim(),
+                                    slug = if (editingDistrict != null && current.slug.isNotBlank()) current.slug else slug.trim(),
                                     active = active
                                 )
                                 val result = districtRepository.saveDistrict(toSave)

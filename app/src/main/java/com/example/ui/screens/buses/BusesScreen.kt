@@ -300,7 +300,12 @@ fun BusesScreen(
     if (showAddDialog || editingBus != null) {
         val current = editingBus ?: Bus()
         var name by remember { mutableStateOf(current.name) }
-        var slug by remember { mutableStateOf(current.slug) }
+        var slug by remember {
+            mutableStateOf(
+                if (editingBus != null) current.slug
+                else name.lowercase().trim().replace(Regex("\\s+"), "-")
+            )
+        }
         var operatorId by remember { mutableStateOf(if (current.operatorId.isNotBlank()) current.operatorId else operators.firstOrNull()?.id.orEmpty()) }
         var category by remember { mutableStateOf(current.category) }
         var busType by remember { mutableStateOf(current.busType) }
@@ -366,8 +371,8 @@ fun BusesScreen(
                         value = name,
                         onValueChange = {
                             name = it
-                            if (slug.isBlank() || slug == current.slug) {
-                                slug = it.lowercase().trim().replace(" ", "-")
+                            if (editingBus == null) {
+                                slug = it.lowercase().trim().replace(Regex("\\s+"), "-")
                             }
                         },
                         label = { Text("বাসের নাম / মডেল *") },
@@ -377,8 +382,10 @@ fun BusesScreen(
 
                     OutlinedTextField(
                         value = slug,
-                        onValueChange = { slug = it },
-                        label = { Text("স্লাগ (Slug) *") },
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("স্লাগ (Slug)") },
+                        supportingText = { Text("প্রথমবার সংরক্ষণ করার সময় স্বয়ংক্রিয়ভাবে তৈরি হবে এবং পরে পরিবর্তন হবে না") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -456,7 +463,7 @@ fun BusesScreen(
                                 val toSave = current.copy(
                                     operatorId = operatorId,
                                     name = name.trim(),
-                                    slug = slug.trim(),
+                                    slug = if (editingBus != null && current.slug.isNotBlank()) current.slug else slug.trim(),
                                     category = category.trim(),
                                     busType = busType.trim(),
                                     description = description.trim(),

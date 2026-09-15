@@ -238,7 +238,12 @@ fun TourPackagesScreen(
     if (showAddDialog || editingPackage != null) {
         val current = editingPackage ?: TourPackage()
         var title by remember { mutableStateOf(current.title) }
-        var slug by remember { mutableStateOf(current.slug) }
+        var slug by remember {
+            mutableStateOf(
+                if (editingPackage != null) current.slug
+                else title.lowercase().trim().replace(Regex("\\s+"), "-")
+            )
+        }
         var destination by remember { mutableStateOf(current.destination) }
         var durationDays by remember { mutableStateOf(current.durationDays.toString()) }
         var durationNights by remember { mutableStateOf(current.durationNights.toString()) }
@@ -277,8 +282,8 @@ fun TourPackagesScreen(
                         value = title,
                         onValueChange = {
                             title = it
-                            if (slug.isBlank() || slug == current.slug) {
-                                slug = it.lowercase().trim().replace(" ", "-")
+                            if (editingPackage == null) {
+                                slug = it.lowercase().trim().replace(Regex("\\s+"), "-")
                             }
                         },
                         label = { Text("প্যাকেজের শিরোনাম *") },
@@ -288,8 +293,10 @@ fun TourPackagesScreen(
 
                     OutlinedTextField(
                         value = slug,
-                        onValueChange = { slug = it },
-                        label = { Text("স্লাগ (Slug) *") },
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("স্লাগ (Slug)") },
+                        supportingText = { Text("প্রথমবার সংরক্ষণ করার সময় স্বয়ংক্রিয়ভাবে তৈরি হবে এবং পরে পরিবর্তন হবে না") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -404,7 +411,7 @@ fun TourPackagesScreen(
                             coroutineScope.launch {
                                 val toSave = current.copy(
                                     title = title.trim(),
-                                    slug = slug.trim(),
+                                    slug = if (editingPackage != null && current.slug.isNotBlank()) current.slug else slug.trim(),
                                     destination = destination.trim(),
                                     durationDays = durationDays.toIntOrNull() ?: 3,
                                     durationNights = durationNights.toIntOrNull() ?: 2,

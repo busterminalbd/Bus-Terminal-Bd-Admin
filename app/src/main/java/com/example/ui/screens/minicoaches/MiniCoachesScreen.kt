@@ -285,7 +285,12 @@ fun MiniCoachesScreen(
     if (showAddDialog || editingCoach != null) {
         val current = editingCoach ?: MiniCoach()
         var name by remember { mutableStateOf(current.name) }
-        var slug by remember { mutableStateOf(current.slug) }
+        var slug by remember {
+            mutableStateOf(
+                if (editingCoach != null) current.slug
+                else name.lowercase().trim().replace(Regex("\\s+"), "-")
+            )
+        }
         var vehicleType by remember { mutableStateOf(current.vehicleType) }
         var capacity by remember { mutableStateOf(current.capacity.toString()) }
         var isAc by remember { mutableStateOf(current.isAc) }
@@ -321,8 +326,8 @@ fun MiniCoachesScreen(
                         value = name,
                         onValueChange = {
                             name = it
-                            if (slug.isBlank() || slug == current.slug) {
-                                slug = it.lowercase().trim().replace(" ", "-")
+                            if (editingCoach == null) {
+                                slug = it.lowercase().trim().replace(Regex("\\s+"), "-")
                             }
                         },
                         label = { Text("মিনি কোচের নাম *") },
@@ -332,8 +337,10 @@ fun MiniCoachesScreen(
 
                     OutlinedTextField(
                         value = slug,
-                        onValueChange = { slug = it },
-                        label = { Text("স্লাগ (Slug) *") },
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("স্লাগ (Slug)") },
+                        supportingText = { Text("প্রথমবার সংরক্ষণ করার সময় স্বয়ংক্রিয়ভাবে তৈরি হবে এবং পরে পরিবর্তন হবে না") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -437,7 +444,7 @@ fun MiniCoachesScreen(
                             coroutineScope.launch {
                                 val toSave = current.copy(
                                     name = name.trim(),
-                                    slug = slug.trim(),
+                                    slug = if (editingCoach != null && current.slug.isNotBlank()) current.slug else slug.trim(),
                                     vehicleType = vehicleType.trim(),
                                     capacity = capacity.toIntOrNull() ?: 29,
                                     isAc = isAc,

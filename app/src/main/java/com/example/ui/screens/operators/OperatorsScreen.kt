@@ -247,7 +247,12 @@ fun OperatorsScreen(
     if (showAddDialog || editingOperator != null) {
         val current = editingOperator ?: BusOperator()
         var name by remember { mutableStateOf(current.name) }
-        var slug by remember { mutableStateOf(current.slug) }
+        var slug by remember {
+            mutableStateOf(
+                if (editingOperator != null) current.slug
+                else name.lowercase().trim().replace(Regex("\\s+"), "-")
+            )
+        }
         var logoUrl by remember { mutableStateOf(current.logo) }
         var description by remember { mutableStateOf(current.description) }
         var phone by remember { mutableStateOf(current.phone) }
@@ -278,8 +283,8 @@ fun OperatorsScreen(
                         value = name,
                         onValueChange = {
                             name = it
-                            if (slug.isBlank() || slug == current.slug) {
-                                slug = it.lowercase().trim().replace(" ", "-")
+                            if (editingOperator == null) {
+                                slug = it.lowercase().trim().replace(Regex("\\s+"), "-")
                             }
                         },
                         label = { Text("অপারেটরের নাম *") },
@@ -289,8 +294,10 @@ fun OperatorsScreen(
 
                     OutlinedTextField(
                         value = slug,
-                        onValueChange = { slug = it },
-                        label = { Text("স্লাগ (Slug) *") },
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("স্লাগ (Slug)") },
+                        supportingText = { Text("প্রথমবার সংরক্ষণ করার সময় স্বয়ংক্রিয়ভাবে তৈরি হবে এবং পরে পরিবর্তন হবে না") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -344,7 +351,7 @@ fun OperatorsScreen(
                             coroutineScope.launch {
                                 val toSave = current.copy(
                                     name = name.trim(),
-                                    slug = slug.trim(),
+                                    slug = if (editingOperator != null && current.slug.isNotBlank()) current.slug else slug.trim(),
                                     logo = logoUrl,
                                     description = description.trim(),
                                     phone = phone.trim(),
